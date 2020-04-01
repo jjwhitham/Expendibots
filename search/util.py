@@ -3,6 +3,7 @@ This module contains some helper functions for printing actions and boards.
 Feel free to use and/or modify them to help you develop your program.
 """
 
+
 def print_move(n, x_a, y_a, x_b, y_b, **kwargs):
     """
     Output a move action of n pieces from square (x_a, y_a)
@@ -140,7 +141,7 @@ def print_board(board_dict, message="", unicode=False, compact=True, **kwargs):
 # | 0,0 | 1,0 | 2,0 | 3,0 | 4,0 | 5,0 | 6,0 | 7,0 |
 # +-----+-----+-----+-----+-----+-----+-----+-----+"""
     # board the board string
-    coords = [(x,7-y) for y in range(8) for x in range(8)]
+    coords = [(x, 7 - y) for y in range(8) for x in range(8)]
     cells = []
     for xy in coords:
         if xy not in board_dict:
