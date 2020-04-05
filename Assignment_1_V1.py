@@ -4,7 +4,7 @@ Created on Tue Mar 31 18:22:50 2020
 
 @author: jhulonce
 """
-
+from copy import deepcopy
 
 ##Classess
 
@@ -94,7 +94,7 @@ def calculateChildrenForMoves(currentNode):
                 for each in newOptions:
                     if legalMove(each,currentNode):
                         newPieces = legalMoveResult(each,currentNode) #gives new peice details
-                        newWhite = whitePieces.copy()
+                        newWhite = deepcopy(whitePieces) # whitePieces.copy()
                         newWhite.remove(eachPiece) #creates copy of white less current piece
                         newWhite.append(newPieces) #adds new piece
                         newState = {'white':newWhite,'black':blackPieces}
@@ -106,7 +106,7 @@ def calculateChildrenForMoves(currentNode):
                     for each in newOptions:
                         if legalMove(each,currentNode):
                              newPieces = legalMoveResult(each,currentNode) #gives new peice details
-                             newWhite = whitePieces.copy()
+                             newWhite = deepcopy(whitePieces) # whitePieces.copy()
                              newWhite.remove(eachPiece) #removes old peice
                              newWhite.append(newPieces) #adds new piece
                              if(n-nCounter!=0):
@@ -133,8 +133,8 @@ def explodeAPiece(State,x,y):
     listOfExplodedPieces = []
     
     toDelete = [[x-1,y],[x,y],[x+1,y],[x-1,y-1],[x,y-1],[x+1,y-1],[x-1,y+1],[x,y+1],[x+1,y+1]]
-    whitePost = whitePieces.copy()
-    blackPost = blackPieces.copy()
+    whitePost = deepcopy(whitePieces) # whitePieces.copy()
+    blackPost = deepcopy(blackPieces) # blackPieces.copy()
      
     for each in whitePieces:
         for item in toDelete:
@@ -184,8 +184,8 @@ def calculateExplodedStatehildrenNodes(currentNode):
         
             explodedpieces = explodeAPiece(state,x,y)
             
-            whitePost = whitePieces.copy()
-            blackPost = blackPieces.copy()
+            whitePost = deepcopy(whitePieces) # whitePieces.copy()
+            blackPost = deepcopy(blackPieces) # blackPieces.copy()
             
             
             for each in explodedpieces:
@@ -200,6 +200,7 @@ def calculateExplodedStatehildrenNodes(currentNode):
 
 #Test: A+
     
+
 
 
 def best_first_search(startBoardState):
@@ -270,25 +271,25 @@ def best_first_search(startBoardState):
 
 
 ######### MAIN CODE
+if __name__ == "__main__":
+
+    import json
+
+    #(n,x,y)
+
+    with open('search/test_cases/test-level-2.json') as dataFile:    
+        startStateData = json.load(dataFile)
+    print(startStateData)
+
+    harder = {'white': [[3, 1, 1]], 'black': []}
 
 
-import json
-
-#(n,x,y)
-
-with open('test-level-2.json') as dataFile:    
-    startStateData = json.load(dataFile)
-print(startStateData)
-
-harder = {'white': [[3, 1, 1]], 'black': []}
-
-
-exampleNode = Node(harder,None)
-exampleNode2 = Node(startStateData,None)
+    exampleNode = Node(harder,None)
+    exampleNode2 = Node(startStateData,None)
 
 
 
-best_first_search(exampleNode2.position)
+    best_first_search(exampleNode2.position)
 
 
 

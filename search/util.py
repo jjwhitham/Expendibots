@@ -1,3 +1,5 @@
+import sys
+
 """
 This module contains some helper functions for printing actions and boards.
 Feel free to use and/or modify them to help you develop your program.
@@ -149,4 +151,5 @@ def print_board(board_dict, message="", unicode=False, compact=True, **kwargs):
         else:
             cells.append(str(board_dict[xy])[:3].center(3))
     # print it
-    print(template.format(message, *cells), **kwargs)
+    sys.stderr.write(template.format(message, *cells), **kwargs)
+    sys.stderr.write("\n")

@@ -1,3 +1,5 @@
+import sys
+
 class Coords:
     """
     A class to represent a coordinate pair on the board.
@@ -28,8 +30,8 @@ class Stack:
 
 
 class Board:
-    def __init__(self, initial_board_state):
-        self.board_state = initial_board_state
+    def __init__(self, board_state):
+        self.board_state = board_state
 
     def get_board_dict(self):
         board_dict = {(i, j): "" for i in range(8) for j in range(8)}
@@ -40,7 +42,8 @@ class Board:
         return board_dict
 
     def move(self, colour, n_tokens, x_from, y_from, x_to, y_to):
-        if not self.is_legal_move(colour, n_tokens, x_from, y_from, x_to, y_to):
+        # sys.stderr.write("move called")
+        if not self.is_legal_move(colour, n_tokens, x_from, y_from, x_to, y_to, False):
             return
         coords_from = (x_from, y_from)
         coords_to = (x_to, y_to)
@@ -55,8 +58,8 @@ class Board:
         self.board_state[colour][coords_from] -= n_tokens
         if self.board_state[colour][coords_from] == 0:
             del self.board_state[colour][coords_from]
-
-    def is_legal_move(self, colour, n_tokens, x_from, y_from, x_to, y_to):
+    # TODO: pull is_debug out of def and calls to is_legal_move. Make this a CL argument
+    def is_legal_move(self, colour, n_tokens, x_from, y_from, x_to, y_to, is_debug):
         """ 
         Checks game rules to see if it would be legal to perform a move action
         of `n_tokens` of `colour` from coordinates(`x_from`, `y_from`) to
@@ -98,60 +101,90 @@ class Board:
         # check for valid coordinates
         for coord in (x_from, y_from, x_to, y_to):
             if coord not in range(8):
-                print(err_msg)
-                print(f"{coord} is not a valid coordinate value.")
+                if is_debug:
+                    sys.stderr.write(err_msg)
+                    sys.stderr.write(f"{coord} is not a valid coordinate value.")
                 return False
 
         # check that move is not into same position
         if coords_from == coords_to:
-            print(err_msg)
-            print("Cannot move stack into same position!")
+            if is_debug:
+                sys.stderr.write(err_msg)
+                sys.stderr.write("Cannot move stack into same position!")
             return False
 
         # check origin stack exists
         if not coords_from in self.board_state[colour]:
-            print(err_msg)
-            print(f"{colour} stack does not exist at {coords_from}.")
+            if is_debug:
+                sys.stderr.write(err_msg)
+                sys.stderr.write(f"{colour} stack does not exist at {coords_from}.")
             return False
 
         # check there are enough tokens required for the move
         n_tokens_origin = self.board_state[colour][coords_from]
         if n_tokens_origin < n_tokens:
-            print(err_msg)
-            print(
+            if is_debug:
+                sys.stderr.write(err_msg)
+                sys.stderr.write(
                 f"Not enough tokens to move. {n_tokens_origin} token(s) at {coords_from}."
-            )
+                )
             return False
 
         # check that the move is in a cardinal direction, i.e.
         coords_diff = (x_to - x_from, y_to - y_from)
         cardinal_move = 0
         if cardinal_move not in coords_diff:
-            print(err_msg)
-            print("This is not a move in a cardinal direction!")
+            if is_debug:
+                sys.stderr.write(err_msg)
+                sys.stderr.write("This is not a move in a cardinal direction!")
             return False
 
         # check that the number of squares to move is less than
         # or equal to the origin stack height
         n_squares_move = abs(coords_diff[0] + coords_diff[1])
         if n_squares_move > n_tokens_origin:
-            print(err_msg)
-            print(
-                f"Cannot move {n_squares_move} squares from a stack with height of \
-                    {n_tokens_origin}."
-            )
-            print("Can only move up to n squares from a stack of n tokens high.")
+            if is_debug:
+                sys.stderr.write(err_msg)
+                sys.stderr.write(
+                    f"Cannot move {n_squares_move} squares from a stack with height of \
+                        {n_tokens_origin}."
+                )
+                sys.stderr.write("Can only move up to n squares from a stack of n tokens high.")
             return False
 
         # check if an opponent's stack exists at destination
         opponents_colour = "black" if colour == "white" else "white"
         if coords_to in self.board_state[opponents_colour]:
-            print(err_msg)
-            print("Opponent's stack already exists here!")
+            if is_debug:
+                sys.stderr.write(err_msg)
+                sys.stderr.write("Opponent's stack already exists here!")
             return False
 
         # everything above is okay, so the move is legal
         return True
+    # TODO: perhaps refactor - move to AI class
+    def get_candidate_actions(self, colour, n_tokens, x_from, y_from):
+        """
+        Finds all legal moves from the current position to another position
+        """
+        candidate_moves = {}
+        candidate_moves2 = []
+        for i in range(1, n_tokens + 1):
+            for j in range(1, n_tokens + 1):
+                for coords_diff in {(i, 0), (-i, 0), (0, i), (0, -i)}:
+                    x_to = x_from + coords_diff[0]
+                    y_to = y_from + coords_diff[1]
+                    n_tokens_move = j
+                    if self.is_legal_move(colour, n_tokens_move, x_from, y_from, x_to, y_to, False):
+                        candidate_moves2.append([0, x_from, y_from, x_to, y_to, n_tokens_move])
+                        if (x_to, y_to) in candidate_moves:
+                            candidate_moves[(x_to, y_to)].append(n_tokens_move)
+                        else:
+                            candidate_moves[(x_to, y_to)] = [n_tokens_move]
+        candidate_actions = {'boom': (x_from, y_from), 'move': candidate_moves}
+        candidate_moves2.append([1, x_from, y_from, -1, -1, -1])
+        candidate_actions2 = candidate_moves2
+        return candidate_actions2
 
     def boom(self, colour, x, y):
         """ 
@@ -159,7 +192,7 @@ class Board:
         region.
         """
         coords = (x, y)
-        print(f"boom() called by a {colour} stack at {coords}")
+        # sys.stderr.write(f"boom() called by a {colour} stack at {coords}")
         # check for legal boom action
         if not self.is_legal_boom(colour, coords):
             return
@@ -188,15 +221,22 @@ class Board:
     def is_legal_boom(self, colour, coords):
         # check that stack of correct colour exists at desired boom coordinates
         if coords not in self.board_state[colour]:
-            print(f"No {colour} stack at {coords}!")
+            # sys.stderr.write(f"No {colour} stack at {coords}!")
             return False
         return True
 
-
+# TODO: maybe make AI fully independent of game. AI will take in a board object. 
+# Pass an ai_solution into Game() upon construction
 class Game:
-    def __init__(self, initial_board_state, AI_algorithm_function=None):
+    def __init__(self, initial_board_state, ai_object=None):
         self.board = Board(initial_board_state)
-        self.AI_algorithm_function = AI_algorithm_function
+        self.ai_object = ai_object
+        # create a list which contains all moves required to get to goal state
+        # make a generator from this list, which will yield the actions one-by-one
+        if ai_object is not None:
+            # TODO: might need to have a ai_object.set_game(self) so that the AI can store the game?
+            self.ai_solution = ai_object.get_solution(self.board)
+            self.ai_solution_generator = (action for action in self.ai_solution)
 
     def get_board_dict(self):
         """
@@ -209,25 +249,68 @@ class Game:
         Figures out next move. This is where the AI search algorithm goes...
         For now, this just takes user input so that we can test our scaffolding.
         """
-        print(f"{colour}'s turn:")
-        if self.AI_algorithm_function == None:
-            is_boom = bool(int(input("is_boom: ")))
-            x_from = int(input("x_from: "))
-            y_from = int(input("y_from: "))
+        # sys.stderr.write(f"{colour}'s turn:")
+        # AI play mode
+        if self.ai_object is not None:
+            next_action = next(self.ai_solution_generator)
+            # TODO: fix up unpacking once action data structure is known
+            # [is_boom, n_tokens, x_from, y_from, x_to, y_to] = next_action
+            return next_action
+
+        # manual play mode
+        else:
+            # boom action or not? 0 or 1
+            is_boom = input("is_boom: ")
+            while is_boom not in {0, 1}:
+                try:
+                    is_boom = bool(int(is_boom))
+                except:
+                    is_boom = input("is_boom: ")
+
+            # x coord from target stack
+            x_from = input("x_from: ")
+            while not isinstance(x_from,int):
+                try:
+                    x_from = int(x_from)
+                except:
+                    x_from = input("x_from: ")
+
+            # y coord from target stack
+            y_from = input("y_from: ")
+            while not isinstance(y_from, int):
+                try:
+                    y_from = int(y_from)
+                except:
+                    y_from = input("y_from: ")
+
             if is_boom:
                 x_to = x_from
                 y_to = y_from
                 n_tokens = 0
+            # if not boom, then choose destination and number of tokens to move
             else:
-                x_to = int(input("x_to: "))
-                y_to = int(input("y_to: "))
-                n_tokens = int(input("n_tokens: "))
-        else:
-            [is_boom, n_tokens, x_from, y_from, x_to, y_to] = AI_algorithm_function(
-                board
-            )
+                x_to = input("x_to: ")
+                while not isinstance(x_to, int):
+                    try:
+                        x_to = int(x_to)
+                    except:
+                        x_to = input("x_to: ")
 
-        return is_boom, n_tokens, x_from, y_from, x_to, y_to
+                y_to = input("y_to: ")
+                while not isinstance(y_to, int):
+                    try:
+                        y_to = int(y_to)
+                    except:
+                        y_to = input("y_to:")
+
+                n_tokens = input("n_tokens: ")
+                while not isinstance(n_tokens, int):
+                    try:
+                        n_tokens = int(n_tokens)
+                    except:
+                        n_tokens = input("n_tokens: ")
+
+        return is_boom, x_from, y_from, x_to, y_to, n_tokens
 
     def move(self, colour, n_tokens, x_from, y_from, x_to, y_to):
         """
@@ -241,7 +324,10 @@ class Game:
         """
         self.board.boom(colour, x, y)
 
-    def game_has_ended(self):
+    # TODO: refactor method to pull out 'white_wins()', 'black_wins()', 'draw()'
+    # so that get_AI_solution
+    @staticmethod
+    def game_has_ended(board):
         # TODO: Implement draw conditions:
         # 1. One board configuration (with all stacks in the same position
         #    and quantity) occurs for a fourth time since the start of the game.
@@ -256,16 +342,16 @@ class Game:
             Spec: 'If on your last turn you eliminate all enemy tokens but lose your
                    last token, you still win.'
         """
-        num_white_stacks = len(self.board.board_state["white"])
-        num_black_stacks = len(self.board.board_state["black"])
+        num_white_stacks = len(board.board_state["white"])
+        num_black_stacks = len(board.board_state["black"])
         if num_white_stacks == 0 and num_black_stacks == 0:
-            print("White wins: no stacks left on board")
+            sys.stderr.write("White wins: no stacks left on board")
             return True
         if num_black_stacks == 0:
-            print("White wins: no black stacks are left on board")
+            sys.stderr.write("White wins: no black stacks are left on board")
             return True
         if num_white_stacks == 0:
-            print("Black wins: no white stacks are left on board")
+            sys.stderr.write("Black wins: no white stacks are left on board")
             return True
 
         return False
