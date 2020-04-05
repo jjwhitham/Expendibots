@@ -29,8 +29,10 @@ class AI:
 
         ai_search_alg = lookup_ai_search_alg[self.ai_algorithm]
         goal_node, n_frontier_nodes_popped, n_explored_nodes = ai_search_alg(initial_ai_board)
+
         sys.stderr.write(f"n_frontier_nodes_popped: {n_frontier_nodes_popped} \n")
         sys.stderr.write(f"n_explored_nodes: {n_explored_nodes} \n")
+
         solution_action_sequence = self.get_solution_action_sequence(goal_node)
         return solution_action_sequence
 
@@ -39,6 +41,8 @@ class AI:
             Returns a list of these actions in reverse (start_action -> goal_action).
             Each action has list structure: [is_boom, x_from, y_from, x_to, y_to, n_tokens]
         """
+        if goal_node is None:
+            return []
         solution_sequence = []
         solution_sequence.append(goal_node.action)
         temp_node = goal_node
@@ -103,9 +107,15 @@ class AI:
         return goal_node, n_frontier_nodes_popped, n_explored_nodes
 
     def expendi_search(self, initial_board):
-        # sys.stderr.write("expendi_search called \n")
-        # input("hit enter to see AI make its moves!")
-
+        """
+        ExpendiSearch involves each node keeping track of its cost, as determined by
+        a heuristic.
+        For now, the total cost is just based upon the state of each node and not prior
+        history (like in best-first).
+        The current heuristic promotes moving white stacks towards black stacks and away from
+        each other. It penalises stacks of more than 1 token height, to encouraging spreading.
+        If stacking is required to hop over black pieces, this will still happen.
+        """
         height_cost_factor = 2
         start_node_cost = self.heuristic_simple(initial_board.board_state, height_cost_factor)
         start_node = Node(initial_board, None, None, start_node_cost)
@@ -116,37 +126,40 @@ class AI:
         n_explored_nodes = 0
         
         frontier.put(start_node)
-        # sys.stderr.write(f"pushing start_node {start_node} onto frontier with state {start_node.board.board_state} \n")
         while not frontier.empty():
+            # dequeue a node from the frontier and check if it contains the goal state
             current_node = frontier.get_nowait()
             n_frontier_nodes_popped += 1
-            # sys.stderr.write(f'popping current_node {current_node} off frontier with state {current_node.board.board_state} \n')
             if self.contains_goal_state(current_node):
                 goal_node = current_node
                 break
-
+            
+            # explore the node if it contains an unseen state
             if not explored.contains(current_node):
                 explored.add(current_node)
                 n_explored_nodes += 1
+
+                # throw away states where white loses
                 if self.white_has_lost(current_node):
-                    # sys.stderr.write(f"white loses with current_node {current_node} with state {current_node.board.board_state}, so disregarding this node \n")
                     continue
-                # sys.stderr.write(f'adding current_node {current_node} to explored nodes with state {current_node.board.board_state} \n')
-                # sys.stderr.write("Explored nodes: \n")
-                # for node in explored.explored_nodes:
-                    # sys.stderr.write(f"{node} \n")
+                
+                # for each legal action enqueue a child node onto the frontier
                 candidate_actions = self.get_candidate_actions(current_node.board, current_node)
                 for action in candidate_actions:
                     new_board = self.apply_action(current_node.board, action)
-                    # sys.stderr.write(new_board.board_state)
-                    # sys.stderr.write('\n')
                     child_node_cost = self.heuristic_simple(new_board.board_state, height_cost_factor)
                     child_node = Node(new_board, current_node, action, child_node_cost)
                     frontier.put(child_node)
-                    # sys.stderr.write(f'pushing child_node {child_node} onto frontier with state {child_node.board.board_state} \n')
-
+            
+            # stop search if it's taking too long, there may be no solution
+            if n_explored_nodes == 4000:
+                sys.stderr.write("n_explored_nodes reached 3,000, finishing early! \n")
+                break
+        
+        # note if no goal has been found
         if goal_node == None:
             sys.stderr.write("no goal state found! \n")
+
         return goal_node, n_frontier_nodes_popped, n_explored_nodes
 
     def heuristic_harder(self, board_state, height_cost_factor, proximity_cost_factor, stack_proximity_factor):
