@@ -44,7 +44,6 @@ class AI:
         if goal_node is None:
             return []
         solution_sequence = []
-        solution_sequence.append(goal_node.action)
         temp_node = goal_node
         while temp_node.action is not None:
             solution_sequence.append(temp_node.action)
@@ -358,6 +357,33 @@ class StackFrontier():
 
 
 class ExploredNodes():
+    def __init__(self):
+        self.explored_states = set()
+    
+    def add(self, node):
+        # Transform state dictionary data structure into immutable tuple data structure.
+        # Sets can only contain fully immutable structures. Adding is O(1)
+        board_state = node.board.board_state
+        white_tuples = tuple(sorted(list(board_state['white'].items())))
+        black_tuples = tuple(sorted(list(board_state['black'].items())))
+        explored_state = (white_tuples, black_tuples)
+        ## this test is good for debugging, but adds time to the solution
+        # if self.contains(node):
+        #     raise Exception(f"{node.board.board_state} is already in explored set")
+        self.explored_states.add(explored_state)
+
+    def contains(self, node):
+        # Transform state dictionary data structure into immutable tuple data structure.
+        # Sets can only contain fully immutable structures. Testing for membership is O(1)
+        board_state = node.board.board_state
+        white_tuples = tuple(sorted(list(board_state['white'].items())))
+        black_tuples = tuple(sorted(list(board_state['black'].items())))
+        explored_state = (white_tuples, black_tuples)
+        return explored_state in self.explored_states
+
+# Retiring this guy. Looping through the set to to add and test membership
+# were both O(n) here... This has made the algorithm ~5 times quicker =D
+class ExploredNodesOld():
     def __init__(self):
         self.explored_nodes = set()
     

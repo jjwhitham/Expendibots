@@ -226,7 +226,7 @@ class Board:
         return True
 
 # TODO: maybe make AI fully independent of game. AI will take in a board object. 
-# Pass an ai_solution into Game() upon construction
+# Pass a board and an ai_solution into Game() upon construction
 class Game:
     def __init__(self, initial_board_state, ai_object=None):
         self.board = Board(initial_board_state)
