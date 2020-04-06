@@ -166,7 +166,7 @@ def explodeAPiece(State,x,y):
 
 #Test: A+
 
-def calculateExplodedStatehildrenNodes(currentNode):
+def calculateExplodedStatechildrenNodes(currentNode):
     
     whitePieces = currentNode.position.get("white")
     blackPieces = currentNode.position.get("black")
@@ -246,7 +246,7 @@ def best_first_search(startBoardState):
         for each in newNeighbours:
             openQueue.append(each)
             
-        newNeighbours2 = calculateExplodedStatehildrenNodes(currentNode)
+        newNeighbours2 = calculateExplodedStatechildrenNodes(currentNode)
         
         for each in newNeighbours2:
             openQueue.append(each)

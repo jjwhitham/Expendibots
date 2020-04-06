@@ -48,6 +48,6 @@ for board_i in range(n_boards):
                 board_data['black'].append([n, x, y])
     
     # generate file
-    filename = f"test-level-{board_i}.json"
+    filename = f"test-level-2{board_i}.json"
     with open(filename, 'w') as f:
         json.dump(board_data, f)
