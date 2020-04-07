@@ -1,5 +1,4 @@
-Running game in AI mode with algorithm: expendi_search 
-n_explored_nodes: 39 
+n_explored_nodes: 41 
 goal state found: {'white': {}, 'black': {}} 
 number of actions taken to achieve goal: 6 
 

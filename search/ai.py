@@ -239,7 +239,7 @@ class AI:
     
     def heuristic_simple(self, board_state, height_cost_factor):
         """
-        The heuristic, or total cost function, returns an integer cost for
+        This heuristic, or cost function, returns an integer cost for
         a particular board state. This informs our AI algorithm and allows
         prioritisation of actions
 
@@ -266,16 +266,14 @@ class AI:
             for other_white_stack_coords in board_state["white"]:
                 if other_white_stack_coords == white_stack_coords:
                     continue
-                dist_to_white_stacks += manhattan_distance(white_stack_coords, other_white_stack_coords)
+                # remove double counting between white stacks
+                dist_to_white_stacks += int(manhattan_distance(white_stack_coords, other_white_stack_coords) / 2)
                 
             # get dist to other black stacks
             for black_stack_coords in board_state["black"]:
                 dist_to_black_stacks += manhattan_distance(white_stack_coords, black_stack_coords)
 
-        # white_stack_heights was counted twice, so use half
-        # white_stack_heights = int(white_stack_heights / 2)
         total_cost = dist_to_black_stacks - dist_to_white_stacks + white_stack_heights
-        # sys.stderr.write(f"total_cost: {total_cost} \n")
         return total_cost
 
     def get_candidate_actions(self, board, node):
@@ -285,8 +283,7 @@ class AI:
         for coords, n_tokens in board.board_state[colour].items():
             candidate_actions_stack = board.get_candidate_actions(colour, n_tokens, coords[0], coords[1])
             candidate_actions.extend(candidate_actions_stack)
-            # sys.stderr.write(f"{colour} stack: {coords}: {n_tokens} \n")
-            # sys.stderr.write(f"candidate_actions: {candidate_actions} \n")
+
         return candidate_actions
 
     def apply_action(self, board, action):
@@ -447,7 +444,5 @@ class ExploredNodesOld():
     def contains(self, node):
         for explored_node in self.explored_nodes:
             if explored_node.board.board_state == node.board.board_state:
-                # sys.stderr.write(f"explored already contains state: {explored_node.board.board_state} == {node.board.board_state} \n")
                 return True
-        # sys.stderr.write(f"explored does not contain state: {node.board.board_state} \n")
         return False
