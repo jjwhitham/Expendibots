@@ -13,7 +13,8 @@ class AI:
 
     def get_solution(self, board_object):
         """
-        Calls the desired AI algorithm, which returns a winning sequence of actions:
+        Calls the desired AI algorithm with an initial board configuration.
+        Returns a winning sequence of actions, if one exists:
         solution: [[is_boom, x_from, y_from, x_to, y_to, n_tokens], [...], ...]
         """
         # initial state
@@ -28,9 +29,8 @@ class AI:
         }
 
         ai_search_alg = lookup_ai_search_alg[self.ai_algorithm]
-        goal_node, n_frontier_nodes_popped, n_explored_nodes = ai_search_alg(initial_ai_board)
+        goal_node, n_explored_nodes = ai_search_alg(initial_ai_board)
 
-        sys.stderr.write(f"n_frontier_nodes_popped: {n_frontier_nodes_popped} \n")
         sys.stderr.write(f"n_explored_nodes: {n_explored_nodes} \n")
 
         solution_action_sequence = self.get_solution_action_sequence(goal_node)
@@ -38,8 +38,8 @@ class AI:
 
     def get_solution_action_sequence(self, goal_node):
         """ Records actions from goal_node back up to start_node.
-            Returns a list of these actions in reverse (start_action -> goal_action).
-            Each action has list structure: [is_boom, x_from, y_from, x_to, y_to, n_tokens]
+            Returns a list of these actions in reverse [start_action, ..., goal_action].
+            Each action has list structure: [is_boom, x_from, y_from, x_to, y_to, n_tokens].
         """
         if goal_node is None:
             return []
@@ -59,51 +59,71 @@ class AI:
 
         return solution_sequence
 
-    def breadth_first_search(self, board):
-        pass
-
-    def depth_first_search(self, initial_board):
-        # sys.stderr.write("depth_first_search called \n")
-
+    def breadth_first_search(self, initial_board):
         start_node = Node(initial_board, None, None)
-        frontier = StackFrontier()
+        frontier = QueueFrontier()
         explored = ExploredNodes()
         goal_node = None
-        n_frontier_nodes_popped = 0
         n_explored_nodes = 0
 
-        frontier.push(start_node)
-        # sys.stderr.write(f"pushing start_node {start_node} onto frontier with state {start_node.board.board_state} \n")
+        frontier.enqueue(start_node)
         while not frontier.is_empty():
-            current_node = frontier.pop()
-            n_frontier_nodes_popped += 1
-            # sys.stderr.write(f'popping current_node {current_node} off frontier with state {current_node.board.board_state} \n')
+            current_node = frontier.dequeue()
+
             if self.contains_goal_state(current_node):
                 goal_node = current_node
                 break
 
-            if not explored.contains(current_node):
-                explored.add(current_node)
-                n_explored_nodes += 1
-                if self.white_has_lost(current_node):
-                    # sys.stderr.write(f"white loses with current_node {current_node} with state {current_node.board.board_state}, so disregarding this node \n")
-                    continue
-                # sys.stderr.write(f'adding current_node {current_node} to explored nodes with state {current_node.board.board_state} \n')
-                # sys.stderr.write("Explored nodes: \n")
-                # for node in explored.explored_nodes:
-                    # sys.stderr.write(f"{node} \n")
-                candidate_actions = self.get_candidate_actions(current_node.board, current_node)
-                for action in candidate_actions:
-                    new_board = self.apply_action(current_node.board, action)
-                    # sys.stderr.write(new_board.board_state)
-                    # sys.stderr.write('\n')
-                    child_node = Node(new_board, current_node, action)
-                    frontier.push(child_node)
-                    # sys.stderr.write(f'pushing child_node {child_node} onto frontier with state {child_node.board.board_state} \n')
+            explored.add(current_node)
+            n_explored_nodes += 1
+
+            if self.white_has_lost(current_node):
+                continue
+
+            candidate_actions = self.get_candidate_actions(current_node.board, current_node)
+            for action in candidate_actions:
+                new_board = self.apply_action(current_node.board, action)
+                child_node = Node(new_board, current_node, action)
+                if not frontier.contains(child_node) and not explored.contains(child_node):
+                    frontier.enqueue(child_node)
 
         if goal_node == None:
             sys.stderr.write("no goal state found! \n")
-        return goal_node, n_frontier_nodes_popped, n_explored_nodes
+
+        return goal_node, n_explored_nodes
+
+    def depth_first_search(self, initial_board):
+        start_node = Node(initial_board, None, None)
+        frontier = StackFrontier()
+        explored = ExploredNodes()
+        goal_node = None
+        n_explored_nodes = 0
+
+        frontier.push(start_node)
+        while not frontier.is_empty():
+            current_node = frontier.pop()
+
+            if self.contains_goal_state(current_node):
+                goal_node = current_node
+                break
+
+            explored.add(current_node)
+            n_explored_nodes += 1
+
+            if self.white_has_lost(current_node):
+                continue
+
+            candidate_actions = self.get_candidate_actions(current_node.board, current_node)
+            for action in candidate_actions:
+                new_board = self.apply_action(current_node.board, action)
+                child_node = Node(new_board, current_node, action)
+                if not frontier.contains(child_node) and not explored.contains(child_node):
+                    frontier.push(child_node)
+
+        if goal_node == None:
+            sys.stderr.write("no goal state found! \n")
+
+        return goal_node, n_explored_nodes
 
     def expendi_search(self, initial_board):
         """
@@ -118,48 +138,46 @@ class AI:
         height_cost_factor = 2
         start_node_cost = self.heuristic_simple(initial_board.board_state, height_cost_factor)
         start_node = Node(initial_board, None, None, start_node_cost)
-        frontier = PriorityQueue()
+        frontier = PriorityQueueFrontier()
         explored = ExploredNodes()
         goal_node = None
-        n_frontier_nodes_popped = 0
         n_explored_nodes = 0
         
-        frontier.put(start_node)
-        while not frontier.empty():
+        frontier.enqueue(start_node)
+        while not frontier.is_empty():
             # dequeue a node from the frontier and check if it contains the goal state
-            current_node = frontier.get_nowait()
-            n_frontier_nodes_popped += 1
+            current_node = frontier.dequeue()
             if self.contains_goal_state(current_node):
                 goal_node = current_node
                 break
             
-            # explore the node if it contains an unseen state
-            if not explored.contains(current_node):
-                explored.add(current_node)
-                n_explored_nodes += 1
+            explored.add(current_node)
+            n_explored_nodes += 1
 
-                # throw away states where white loses
-                if self.white_has_lost(current_node):
-                    continue
-                
-                # for each legal action enqueue a child node onto the frontier
-                candidate_actions = self.get_candidate_actions(current_node.board, current_node)
-                for action in candidate_actions:
-                    new_board = self.apply_action(current_node.board, action)
-                    child_node_cost = self.heuristic_simple(new_board.board_state, height_cost_factor)
-                    child_node = Node(new_board, current_node, action, child_node_cost)
-                    frontier.put(child_node)
+            # throw away states where white loses
+            if self.white_has_lost(current_node):
+                continue
+            
+            # for each legal action enqueue a child node onto the frontier
+            candidate_actions = self.get_candidate_actions(current_node.board, current_node)
+            for action in candidate_actions:
+                new_board = self.apply_action(current_node.board, action)
+                child_node_cost = self.heuristic_simple(new_board.board_state, height_cost_factor)
+                child_node = Node(new_board, current_node, action, child_node_cost)
+                # explore child node if frontier/explored has no history of seeing it
+                if not frontier.contains(child_node) and not explored.contains(child_node):
+                    frontier.enqueue(child_node)
             
             # stop search if it's taking too long, there may be no solution
-            if n_explored_nodes == 4000:
-                sys.stderr.write("n_explored_nodes reached 3,000, finishing early! \n")
-                break
+            # if n_explored_nodes == 10000:
+            #     sys.stderr.write("n_explored_nodes reached 10,000, finishing early! \n")
+            #     break
         
         # note if no goal has been found
         if goal_node == None:
             sys.stderr.write("no goal state found! \n")
 
-        return goal_node, n_frontier_nodes_popped, n_explored_nodes
+        return goal_node, n_explored_nodes
 
     def heuristic_harder(self, board_state, height_cost_factor, proximity_cost_factor, stack_proximity_factor):
         """
@@ -262,11 +280,13 @@ class AI:
 
     def get_candidate_actions(self, board, node):
         colour = "white"
+        candidate_actions = []
+        # for each stack get a list of legal actions
         for coords, n_tokens in board.board_state[colour].items():
-            candidate_actions = board.get_candidate_actions(colour, n_tokens, coords[0], coords[1])
+            candidate_actions_stack = board.get_candidate_actions(colour, n_tokens, coords[0], coords[1])
+            candidate_actions.extend(candidate_actions_stack)
             # sys.stderr.write(f"{colour} stack: {coords}: {n_tokens} \n")
             # sys.stderr.write(f"candidate_actions: {candidate_actions} \n")
-        # TODO: pick one data structure or the other...
         return candidate_actions
 
     def apply_action(self, board, action):
@@ -280,10 +300,8 @@ class AI:
         [is_boom, x_from, y_from, x_to, y_to, n_tokens] = action
         colour = "white"
         if is_boom:
-            # sys.stderr.write("is_boom is True \n")
             new_board.boom(colour, x_from, y_from)
         else:
-            # sys.stderr.write("is_boom is False \n")
             new_board.move(colour, n_tokens, x_from, y_from, x_to, y_to)
         return new_board
 
@@ -292,15 +310,9 @@ class AI:
         The goal for part A is to wipe all black pieces off the board.
         If all pieces are removed in last turn, then white wins too.
         """
-        # colour = "white"
-        n_black_stacks = len(current_node.board.board_state["black"])
+        colour = "black"
+        n_black_stacks = len(current_node.board.board_state[colour])
         return n_black_stacks == 0
-
-        # goal_coords = (7, 7)
-        # for stack_coords in current_node.board.board_state[colour]:
-        #     if stack_coords == goal_coords:
-        #         return True
-        # return False
 
     def white_has_lost(self, node):
         n_white_stacks = len(node.board.board_state['white'])
@@ -325,35 +337,75 @@ class Node():
     def __lt__(self, other):
          return self.cost < other.cost
 
-
-class StackFrontier():
+class Frontier():
     def __init__(self):
         self.frontier = []
+        self.frontier_states = set()
     
-    def push(self, node):
-        self.frontier.append(node)
-
     def contains(self, node):
-        for frontier_node in self.frontier:
-            if frontier_node.board.board_state == node.board.board_state:
-                return True
-        return False
-        # return any(node.board.board_state == board.board_state for node in self.frontier)
+        board_state = node.board.board_state
+        white_tuples = tuple(sorted(list(board_state['white'].items())))
+        black_tuples = tuple(sorted(list(board_state['black'].items())))
+        frontier_state = (white_tuples, black_tuples)
+        return frontier_state in self.frontier_states
 
     def is_empty(self):
         is_empty = len(self.frontier) == 0
-        # if is_empty:
-            # sys.stderr.write("last node popped off frontier!")
         return is_empty
+class StackFrontier(Frontier):
+
+    def push(self, node):
+        board_state = node.board.board_state
+        white_tuples = tuple(sorted(list(board_state['white'].items())))
+        black_tuples = tuple(sorted(list(board_state['black'].items())))
+        frontier_state = (white_tuples, black_tuples)
+        ## this test is good for debugging, but adds time to the solution
+        # if self.contains(node):
+        #     raise Exception(f"{node.board.board_state} is already in explored set")
+        self.frontier_states.add(frontier_state)
+        self.frontier.append(node)
 
     def pop(self):
         if self.is_empty():
             raise Exception("Empty Frontier - No Solution!")
-        else:
-            # TODO: consider using pop here
-            # node = self.frontier[-1]
-            # self.frontier = self.frontier[:-1]
-            return self.frontier.pop() # node
+        return self.frontier.pop()
+
+class QueueFrontier(Frontier):
+
+    def enqueue(self, node):
+        board_state = node.board.board_state
+        white_tuples = tuple(sorted(list(board_state['white'].items())))
+        black_tuples = tuple(sorted(list(board_state['black'].items())))
+        frontier_state = (white_tuples, black_tuples)
+        ## this test is good for debugging, but adds time to the solution
+        # if self.contains(node):
+        #     raise Exception(f"{node.board.board_state} is already in explored set")
+        self.frontier_states.add(frontier_state)
+        self.frontier.append(node)
+
+    def dequeue(self):
+        if self.is_empty():
+            raise Exception("Empty frontier - No Solution!")
+        return self.frontier.pop(0)
+
+class PriorityQueueFrontier(Frontier):
+    def __init__(self):
+        super().__init__()
+        self.frontier = PriorityQueue()
+
+    def enqueue(self, node):
+        board_state = node.board.board_state
+        white_tuples = tuple(sorted(list(board_state['white'].items())))
+        black_tuples = tuple(sorted(list(board_state['black'].items())))
+        frontier_state = (white_tuples, black_tuples)
+        self.frontier_states.add(frontier_state)
+        self.frontier.put(node)
+
+    def dequeue(self):
+        return self.frontier.get_nowait()
+
+    def is_empty(self):
+        self.frontier.empty()
 
 
 class ExploredNodes():
