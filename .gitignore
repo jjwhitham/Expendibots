@@ -3,3 +3,4 @@ __pycache__
 .python_version
 .vscode
 stderr.txt
+.DS_Store

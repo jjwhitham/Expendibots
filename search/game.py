@@ -1,4 +1,6 @@
 import sys
+from collections import defaultdict
+from copy import deepcopy
 
 class Coords:
     """
@@ -224,12 +226,29 @@ class Board:
             # sys.stderr.write(f"No {colour} stack at {coords}!")
             return False
         return True
+    
+    @staticmethod
+    def get_board_state_as_tuples(board_state):
+        """
+        Transforms the dictionary representation of the given board
+        state into a fully immutable tuple representation.
+        This representation can then be used for dictionary keys, or
+        as set elements. Dicts and sets both have O(1) operations.
+        Structure: 
+        ((((x_0, y_0), n_0), ((x_1, y_1), n_1))_wh, (((x_0, y_0), n_0))_bl)
+        """
+        board_state = deepcopy(board_state)
+        white_tuples = tuple(sorted(list(board_state['white'].items())))
+        black_tuples = tuple(sorted(list(board_state['black'].items())))
+        board_state_as_tuples = (white_tuples, black_tuples)
+        return board_state_as_tuples
 
 # TODO: maybe make AI fully independent of game. AI will take in a board object. 
 # Pass a board and an ai_solution into Game() upon construction
 class Game:
     def __init__(self, initial_board_state, ai_object=None):
         self.board = Board(initial_board_state)
+        self.states_seen = defaultdict(int)
         self.ai_object = ai_object
         # create a list which contains all moves required to get to goal state
         # make a generator from this list, which will yield the actions one-by-one
@@ -259,6 +278,11 @@ class Game:
 
         # manual play mode
         else:
+            # print out heuristic value
+            height_cost_factor = 2
+            heuristic_value = self.heuristic_simple(self.board.board_state, height_cost_factor)
+            print(f"heuristic_value: {heuristic_value}")
+
             # boom action or not? 0 or 1
             is_boom = input("is_boom: ")
             while is_boom not in {0, 1}:
@@ -309,7 +333,7 @@ class Game:
                         n_tokens = int(n_tokens)
                     except:
                         n_tokens = input("n_tokens: ")
-
+        
         return is_boom, x_from, y_from, x_to, y_to, n_tokens
 
     def move(self, colour, n_tokens, x_from, y_from, x_to, y_to):
@@ -324,10 +348,63 @@ class Game:
         """
         self.board.boom(colour, x, y)
 
+    def heuristic_simple(self, board_state, height_cost_factor):
+        """
+        This heuristic, or cost function, returns an integer cost for
+        a particular board state. This informs our AI algorithm and allows
+        prioritisation of actions
+
+        This heuristic returns the sum of costs for each white stack, where:
+            cost_per_stack = dist_to_black_stacks - dist_to_white_stacks + white_stack_heights
+        """
+        def manhattan_distance(coords_from, coords_to):
+            x_dist = abs((coords_to[0] - coords_from[0]))
+            y_dist = abs((coords_to[1] - coords_from[1]))
+            total_dist = x_dist + y_dist
+            return total_dist
+
+        # TODO: get rid of double counting
+        dist_to_black_stacks = 0
+        dist_to_white_stacks = 0
+        white_stack_heights = 0
+
+        for white_stack_coords, height in board_state["white"].items():
+            # penalise stacks greater than 1 token high
+            if height > 1:
+                white_stack_heights += height_cost_factor * height
+            
+            # get dist to other white stacks
+            for other_white_stack_coords in board_state["white"]:
+                if other_white_stack_coords == white_stack_coords:
+                    continue
+                # remove double counting between white stacks
+                dist_to_white_stacks += int(manhattan_distance(white_stack_coords, other_white_stack_coords) / 2)
+                
+            # get dist to other black stacks
+            for black_stack_coords in board_state["black"]:
+                dist_to_black_stacks += manhattan_distance(white_stack_coords, black_stack_coords)
+
+        total_cost = dist_to_black_stacks - dist_to_white_stacks + white_stack_heights
+        return total_cost
+
+    def max_repeated_states(self):
+        """
+        Updates self.states_seen with current state and 
+        returns the maximum number of times any state has been
+        seen so far
+        """
+        board_state_as_tuples = Board.get_board_state_as_tuples(self.board.board_state)
+        self.states_seen[board_state_as_tuples] += 1
+
+        max_repeated_states = max(self.states_seen.values())
+        sys.stderr.write(f"max_repeated_states: {max_repeated_states} \n")
+        return max_repeated_states
+
+
     # TODO: refactor method to pull out 'white_wins()', 'black_wins()', 'draw()'
     # so that get_AI_solution
-    @staticmethod
-    def game_has_ended(board):
+    # TODO: implement self.max_repeated_states
+    def game_has_ended(self, n_turns):
         # TODO: Implement draw conditions:
         # 1. One board configuration (with all stacks in the same position
         #    and quantity) occurs for a fourth time since the start of the game.
@@ -342,16 +419,34 @@ class Game:
             Spec: 'If on your last turn you eliminate all enemy tokens but lose your
                    last token, you still win.'
         """
-        num_white_stacks = len(board.board_state["white"])
-        num_black_stacks = len(board.board_state["black"])
-        if num_white_stacks == 0 and num_black_stacks == 0:
-            sys.stderr.write("White wins: no stacks left on board")
-            return True
-        if num_black_stacks == 0:
-            sys.stderr.write("White wins: no black stacks are left on board")
-            return True
-        if num_white_stacks == 0:
-            sys.stderr.write("Black wins: no white stacks are left on board")
-            return True
+        game_has_not_ended = 0
+        white_wins = 1
+        black_wins = 2
+        draw = 3        
+        max_allowed_turns = 250
+        max_allowed_repeated_states = 4
+        num_white_stacks = len(self.board.board_state["white"])
+        num_black_stacks = len(self.board.board_state["black"])
+        max_repeated_states = self.max_repeated_states()
 
-        return False
+        if num_white_stacks == 0 and num_black_stacks == 0:
+            sys.stderr.write("Draw: no stacks left on board \n")
+            return draw
+
+        if num_black_stacks == 0:
+            sys.stderr.write("White wins: no black stacks are left on board \n")
+            return white_wins
+
+        if num_white_stacks == 0:
+            sys.stderr.write("Black wins: no white stacks are left on board \n")
+            return black_wins
+        # TODO: check if this should be == or >
+        if n_turns == max_allowed_turns:
+            sys.stderr.write("Draw: maximum number of turns (250) reached \n")
+            return draw
+        # TODO: check if this should be == or >
+        if max_repeated_states == max_allowed_repeated_states:
+            sys.stderr.write("Draw: maximum number of repeated board configurations (4) reached \n")
+            return draw
+
+        return game_has_not_ended

@@ -132,7 +132,7 @@ class AI:
         For now, the total cost is just based upon the state of each node and not prior
         history (like in best-first).
         The current heuristic promotes moving white stacks towards black stacks and away from
-        each other. It penalises stacks of more than 1 token height, to encouraging spreading.
+        each other. It penalises stacks of more than 1 token height, to encourage spreading.
         If stacking is required to hop over black pieces, this will still happen.
         """
         height_cost_factor = 2
@@ -341,9 +341,7 @@ class Frontier():
     
     def contains(self, node):
         board_state = node.board.board_state
-        white_tuples = tuple(sorted(list(board_state['white'].items())))
-        black_tuples = tuple(sorted(list(board_state['black'].items())))
-        frontier_state = (white_tuples, black_tuples)
+        frontier_state = Board.get_board_state_as_tuples(board_state)
         return frontier_state in self.frontier_states
 
     def is_empty(self):
@@ -353,9 +351,7 @@ class StackFrontier(Frontier):
 
     def push(self, node):
         board_state = node.board.board_state
-        white_tuples = tuple(sorted(list(board_state['white'].items())))
-        black_tuples = tuple(sorted(list(board_state['black'].items())))
-        frontier_state = (white_tuples, black_tuples)
+        frontier_state = Board.get_board_state_as_tuples(board_state)
         ## this test is good for debugging, but adds time to the solution
         # if self.contains(node):
         #     raise Exception(f"{node.board.board_state} is already in explored set")
@@ -371,9 +367,7 @@ class QueueFrontier(Frontier):
 
     def enqueue(self, node):
         board_state = node.board.board_state
-        white_tuples = tuple(sorted(list(board_state['white'].items())))
-        black_tuples = tuple(sorted(list(board_state['black'].items())))
-        frontier_state = (white_tuples, black_tuples)
+        frontier_state = Board.get_board_state_as_tuples(board_state)
         ## this test is good for debugging, but adds time to the solution
         # if self.contains(node):
         #     raise Exception(f"{node.board.board_state} is already in explored set")
@@ -392,9 +386,7 @@ class PriorityQueueFrontier(Frontier):
 
     def enqueue(self, node):
         board_state = node.board.board_state
-        white_tuples = tuple(sorted(list(board_state['white'].items())))
-        black_tuples = tuple(sorted(list(board_state['black'].items())))
-        frontier_state = (white_tuples, black_tuples)
+        frontier_state = Board.get_board_state_as_tuples(board_state)
         self.frontier_states.add(frontier_state)
         self.frontier.put(node)
 
@@ -413,9 +405,7 @@ class ExploredNodes():
         # Transform state dictionary data structure into immutable tuple data structure.
         # Sets can only contain fully immutable structures. Adding is O(1)
         board_state = node.board.board_state
-        white_tuples = tuple(sorted(list(board_state['white'].items())))
-        black_tuples = tuple(sorted(list(board_state['black'].items())))
-        explored_state = (white_tuples, black_tuples)
+        explored_state = Board.get_board_state_as_tuples(board_state)
         ## this test is good for debugging, but adds time to the solution
         # if self.contains(node):
         #     raise Exception(f"{node.board.board_state} is already in explored set")
@@ -425,9 +415,7 @@ class ExploredNodes():
         # Transform state dictionary data structure into immutable tuple data structure.
         # Sets can only contain fully immutable structures. Testing for membership is O(1)
         board_state = node.board.board_state
-        white_tuples = tuple(sorted(list(board_state['white'].items())))
-        black_tuples = tuple(sorted(list(board_state['black'].items())))
-        explored_state = (white_tuples, black_tuples)
+        explored_state = Board.get_board_state_as_tuples(board_state)
         return explored_state in self.explored_states
 
 # Retiring this guy. Looping through the set to to add and test membership
