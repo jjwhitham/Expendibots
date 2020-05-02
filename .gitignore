@@ -4,3 +4,5 @@ __pycache__
 .vscode
 stderr.txt
 .DS_Store
+.sandbox
+stderr.txt
