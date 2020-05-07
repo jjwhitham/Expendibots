@@ -45,8 +45,6 @@ class Board:
 
     def move(self, colour, n_tokens, x_from, y_from, x_to, y_to):
         # sys.stderr.write("move called")
-        if not self.is_legal_move(colour, n_tokens, x_from, y_from, x_to, y_to, False):
-            return
         coords_from = (x_from, y_from)
         coords_to = (x_to, y_to)
 
@@ -60,7 +58,166 @@ class Board:
         self.board_state[colour][coords_from] -= n_tokens
         if self.board_state[colour][coords_from] == 0:
             del self.board_state[colour][coords_from]
-    # TODO: pull is_debug out of def and calls to is_legal_move. Make this a CL argument
+    
+    def boom(self, colour, x, y):
+        """ 
+        Blows up a 3x3 square region, recursively calling itself on any stacks within the
+        region.
+        """
+        coords = (x, y)
+        # sys.stderr.write(f"boom() called by a {colour} stack at {coords}")
+
+        # delete the stack at the cell which called boom
+        del self.board_state[colour][coords]
+
+        # get a set of coords which represent all positions on board
+        board_coords = {(i, j) for i in range(8) for j in range(8)}
+        # find coords for within blast radius of 1 square (3x3 area) centred at (x, y)
+        blast_radius = 1
+        blast_coords = {
+            (i, j)
+            for i in range(x - blast_radius, x + blast_radius + 1)
+            for j in range(y - blast_radius, y + blast_radius + 1)
+        }
+        # only the blast coordinates which are on the board are considered
+        blast_coords = blast_coords.intersection(board_coords)
+        # current stack at (x, y) has already been considered, so remove it
+        blast_coords.remove(coords)
+        # if a stack exists at one of the blast coords, then call boom on it
+        for colour, colour_stacks in self.board_state.items():
+            for coords in blast_coords:
+                if coords in colour_stacks:
+                    self.boom(colour, coords[0], coords[1])
+    
+    @staticmethod
+    def get_board_state_as_tuples(board_state):
+        """
+        Transforms the dictionary representation of the given board
+        state into a fully immutable tuple representation.
+        This representation can then be used for dictionary keys, or
+        as set elements. Dicts and sets both have O(1) operations.
+        Structure: 
+        ((((x_0, y_0), n_0), ((x_1, y_1), n_1))_wh, (((x_0, y_0), n_0))_bl)
+        """
+        board_state = deepcopy(board_state)
+        white_tuples = tuple(sorted(list(board_state['white'].items())))
+        black_tuples = tuple(sorted(list(board_state['black'].items())))
+        board_state_as_tuples = (white_tuples, black_tuples)
+        return board_state_as_tuples
+
+# TODO: maybe make AI fully independent of game. AI will take in a board object. 
+# Pass a board and an ai_solution into Game() upon construction
+class Game:
+    def __init__(self, initial_board_state, states_seen=defaultdict(int), n_turns=0):
+        self.board = Board(initial_board_state)
+        self.states_seen = states_seen
+        self.n_turns = n_turns
+
+    def get_board_dict(self):
+        """
+        Returns the board dict for printing purposes
+        """
+        return self.board.get_board_dict()
+
+    def get_next_action(self, colour):
+        """
+        Figures out next move. This is where the AI search algorithm goes...
+        For now, this just takes user input so that we can test our scaffolding.
+        """
+        # sys.stderr.write(f"{colour}'s turn:")
+        # AI play mode
+        # if self.ai_object is not None:
+        #     next_action = next(self.ai_solution_generator)
+        #     # TODO: fix up unpacking once action data structure is known
+        #     # [is_boom, n_tokens, x_from, y_from, x_to, y_to] = next_action
+        #     return next_action
+
+        # manual play mode
+        # else:
+        # action = () # not sure if we can initialise action from within an
+        # if block...?
+        # print out heuristic value
+        height_cost_factor = 2
+        heuristic_value = self.heuristic_simple(self.board.board_state, height_cost_factor)
+        print(f"heuristic_value: {heuristic_value}")
+
+        # boom action or not? 0 or 1
+        is_boom = input("is_boom: ")
+        while is_boom not in {0, 1}:
+            try:
+                is_boom = bool(int(is_boom))
+            except:
+                is_boom = input("is_boom: ")
+
+        # x coord from target stack
+        x_from = input("x_from: ")
+        while not isinstance(x_from,int):
+            try:
+                x_from = int(x_from)
+            except:
+                x_from = input("x_from: ")
+
+        # y coord from target stack
+        y_from = input("y_from: ")
+        while not isinstance(y_from, int):
+            try:
+                y_from = int(y_from)
+            except:
+                y_from = input("y_from: ")
+
+        if is_boom:
+            x_to = x_from
+            y_to = y_from
+            n_tokens = 0
+        # if not boom, then choose destination and number of tokens to move
+        else:
+            x_to = input("x_to: ")
+            while not isinstance(x_to, int):
+                try:
+                    x_to = int(x_to)
+                except:
+                    x_to = input("x_to: ")
+
+            y_to = input("y_to: ")
+            while not isinstance(y_to, int):
+                try:
+                    y_to = int(y_to)
+                except:
+                    y_to = input("y_to:")
+
+            n_tokens = input("n_tokens: ")
+            while not isinstance(n_tokens, int):
+                try:
+                    n_tokens = int(n_tokens)
+                except:
+                    n_tokens = input("n_tokens: ")
+    
+        if is_boom:
+            action = ("BOOM", (x_from, y_from))
+        else:
+            action = ("MOVE", n_tokens, (x_from, y_from), (x_to, y_to))
+        return action # is_boom, x_from, y_from, x_to, y_to, n_tokens
+
+    def move(self, colour, n_tokens, x_from, y_from, x_to, y_to):
+        """
+        Provides an interface to access Board's move method
+        """
+        if not self.is_legal_move(colour, n_tokens, x_from, y_from, x_to, y_to, True):
+            return
+        self.board.move(colour, n_tokens, x_from, y_from, x_to, y_to)
+        self.update_repeated_states
+
+    def boom(self, colour, x, y):
+        """
+        Provides an interface to access Board's boom method
+        """
+        # check for legal boom action
+        coords = (x, y)
+        if not self.is_legal_boom(colour, coords):
+            sys.stderr.write("Not a legal move! \n")
+            return
+        self.board.boom(colour, x, y)
+    
     def is_legal_move(self, colour, n_tokens, x_from, y_from, x_to, y_to, is_debug):
         """ 
         Checks game rules to see if it would be legal to perform a move action
@@ -98,7 +255,7 @@ class Board:
         """
         coords_from = (x_from, y_from)
         coords_to = (x_to, y_to)
-        err_msg = "Illegal Move:"
+        err_msg = "Illegal Move: "
 
         # check for valid coordinates
         for coord in (x_from, y_from, x_to, y_to):
@@ -116,14 +273,14 @@ class Board:
             return False
 
         # check origin stack exists
-        if not coords_from in self.board_state[colour]:
+        if not coords_from in self.board.board_state[colour]:
             if is_debug:
                 sys.stderr.write(err_msg)
                 sys.stderr.write(f"{colour} stack does not exist at {coords_from}.")
             return False
 
         # check there are enough tokens required for the move
-        n_tokens_origin = self.board_state[colour][coords_from]
+        n_tokens_origin = self.board.board_state[colour][coords_from]
         if n_tokens_origin < n_tokens:
             if is_debug:
                 sys.stderr.write(err_msg)
@@ -156,21 +313,32 @@ class Board:
 
         # check if an opponent's stack exists at destination
         opponents_colour = "black" if colour == "white" else "white"
-        if coords_to in self.board_state[opponents_colour]:
+        if coords_to in self.board.board_state[opponents_colour]:
             if is_debug:
                 sys.stderr.write(err_msg)
                 sys.stderr.write("Opponent's stack already exists here!")
             return False
 
+        # check that this move won't result in a 4th repeat state
+        new_board = Board(self.board.board_state)
+        new_board_state_as_tuples = Board.get_board_state_as_tuples(new_board.board_state)
+        n_times_state_seen = self.states_seen[new_board_state_as_tuples]
+        if n_times_state_seen == 3:
+            if is_debug:
+                sys.stderr.write(err_msg)
+                sys.stderr.write(f"Seen state {n_times_state_seen} times. \n")
+                sys.stderr.write(f"{new_board.board_state} \n")
+            return False
+
         # everything above is okay, so the move is legal
         return True
-    # TODO: perhaps refactor - move to AI class
+
     def get_candidate_actions(self, colour, n_tokens, x_from, y_from):
         """
         Finds all legal moves from the current position to another position
         """
-        candidate_moves = {}
-        candidate_moves2 = []
+        # candidate_moves = {}
+        candidate_actions = []
         for i in range(1, n_tokens + 1):
             for j in range(1, n_tokens + 1):
                 for coords_diff in {(i, 0), (-i, 0), (0, i), (0, -i)}:
@@ -178,176 +346,18 @@ class Board:
                     y_to = y_from + coords_diff[1]
                     n_tokens_move = j
                     if self.is_legal_move(colour, n_tokens_move, x_from, y_from, x_to, y_to, False):
-                        candidate_moves2.append([0, x_from, y_from, x_to, y_to, n_tokens_move])
-                        if (x_to, y_to) in candidate_moves:
-                            candidate_moves[(x_to, y_to)].append(n_tokens_move)
-                        else:
-                            candidate_moves[(x_to, y_to)] = [n_tokens_move]
-        candidate_actions = {'boom': (x_from, y_from), 'move': candidate_moves}
-        candidate_moves2.append([1, x_from, y_from, -1, -1, -1])
-        candidate_actions2 = candidate_moves2
-        return candidate_actions2
-
-    def boom(self, colour, x, y):
-        """ 
-        Blows up a 3x3 square region, recursively calling itself on any stacks within the
-        region.
-        """
-        coords = (x, y)
-        # sys.stderr.write(f"boom() called by a {colour} stack at {coords}")
-        # check for legal boom action
-        if not self.is_legal_boom(colour, coords):
-            return
-        # delete the stack at the cell which called boom
-        del self.board_state[colour][coords]
-
-        # get a set of coords which represent all positions on board
-        board_coords = {(i, j) for i in range(8) for j in range(8)}
-        # find coords for within blast radius of 1 square (3x3 area) centered at (x, y)
-        blast_radius = 1
-        blast_coords = {
-            (i, j)
-            for i in range(x - blast_radius, x + blast_radius + 1)
-            for j in range(y - blast_radius, y + blast_radius + 1)
-        }
-        # only the blast coordinates which are on the board are considered
-        blast_coords = blast_coords.intersection(board_coords)
-        # current stack at (x, y) has already been considered, so remove it
-        blast_coords.remove(coords)
-        # if a stack exists at one of the blast coords, then call boom on it
-        for colour, colour_stacks in self.board_state.items():
-            for coords in blast_coords:
-                if coords in colour_stacks:
-                    self.boom(colour, coords[0], coords[1])
-
+                        candidate_actions.append(("MOVE", n_tokens_move, (x_from, y_from), (x_to, y_to)))
+        # TODO: Move ordering - put BOOM first? Bad for start game, good for middle/end game
+        candidate_actions.append(("BOOM", (x_from, y_from)))
+        return candidate_actions
+ 
     def is_legal_boom(self, colour, coords):
         # check that stack of correct colour exists at desired boom coordinates
-        if coords not in self.board_state[colour]:
+        if coords not in self.board.board_state[colour]:
             # sys.stderr.write(f"No {colour} stack at {coords}!")
             return False
         return True
     
-    @staticmethod
-    def get_board_state_as_tuples(board_state):
-        """
-        Transforms the dictionary representation of the given board
-        state into a fully immutable tuple representation.
-        This representation can then be used for dictionary keys, or
-        as set elements. Dicts and sets both have O(1) operations.
-        Structure: 
-        ((((x_0, y_0), n_0), ((x_1, y_1), n_1))_wh, (((x_0, y_0), n_0))_bl)
-        """
-        board_state = deepcopy(board_state)
-        white_tuples = tuple(sorted(list(board_state['white'].items())))
-        black_tuples = tuple(sorted(list(board_state['black'].items())))
-        board_state_as_tuples = (white_tuples, black_tuples)
-        return board_state_as_tuples
-
-# TODO: maybe make AI fully independent of game. AI will take in a board object. 
-# Pass a board and an ai_solution into Game() upon construction
-class Game:
-    def __init__(self, initial_board_state, ai_object=None):
-        self.board = Board(initial_board_state)
-        self.states_seen = defaultdict(int)
-        self.ai_object = ai_object
-        # create a list which contains all moves required to get to goal state
-        # make a generator from this list, which will yield the actions one-by-one
-        if ai_object is not None:
-            # TODO: might need to have a ai_object.set_game(self) so that the AI can store the game?
-            self.ai_solution = ai_object.get_solution(self.board)
-            self.ai_solution_generator = (action for action in self.ai_solution)
-
-    def get_board_dict(self):
-        """
-        Returns the board dict for printing purposes
-        """
-        return self.board.get_board_dict()
-
-    def get_next_move(self, colour):
-        """
-        Figures out next move. This is where the AI search algorithm goes...
-        For now, this just takes user input so that we can test our scaffolding.
-        """
-        # sys.stderr.write(f"{colour}'s turn:")
-        # AI play mode
-        if self.ai_object is not None:
-            next_action = next(self.ai_solution_generator)
-            # TODO: fix up unpacking once action data structure is known
-            # [is_boom, n_tokens, x_from, y_from, x_to, y_to] = next_action
-            return next_action
-
-        # manual play mode
-        else:
-            # print out heuristic value
-            height_cost_factor = 2
-            heuristic_value = self.heuristic_simple(self.board.board_state, height_cost_factor)
-            print(f"heuristic_value: {heuristic_value}")
-
-            # boom action or not? 0 or 1
-            is_boom = input("is_boom: ")
-            while is_boom not in {0, 1}:
-                try:
-                    is_boom = bool(int(is_boom))
-                except:
-                    is_boom = input("is_boom: ")
-
-            # x coord from target stack
-            x_from = input("x_from: ")
-            while not isinstance(x_from,int):
-                try:
-                    x_from = int(x_from)
-                except:
-                    x_from = input("x_from: ")
-
-            # y coord from target stack
-            y_from = input("y_from: ")
-            while not isinstance(y_from, int):
-                try:
-                    y_from = int(y_from)
-                except:
-                    y_from = input("y_from: ")
-
-            if is_boom:
-                x_to = x_from
-                y_to = y_from
-                n_tokens = 0
-            # if not boom, then choose destination and number of tokens to move
-            else:
-                x_to = input("x_to: ")
-                while not isinstance(x_to, int):
-                    try:
-                        x_to = int(x_to)
-                    except:
-                        x_to = input("x_to: ")
-
-                y_to = input("y_to: ")
-                while not isinstance(y_to, int):
-                    try:
-                        y_to = int(y_to)
-                    except:
-                        y_to = input("y_to:")
-
-                n_tokens = input("n_tokens: ")
-                while not isinstance(n_tokens, int):
-                    try:
-                        n_tokens = int(n_tokens)
-                    except:
-                        n_tokens = input("n_tokens: ")
-        
-        return is_boom, x_from, y_from, x_to, y_to, n_tokens
-
-    def move(self, colour, n_tokens, x_from, y_from, x_to, y_to):
-        """
-        Provides an interface to access Board's move method
-        """
-        self.board.move(colour, n_tokens, x_from, y_from, x_to, y_to)
-
-    def boom(self, colour, x, y):
-        """
-        Provides an interface to access Board's boom method
-        """
-        self.board.boom(colour, x, y)
-
     def heuristic_simple(self, board_state, height_cost_factor):
         """
         This heuristic, or cost function, returns an integer cost for
@@ -387,24 +397,18 @@ class Game:
         total_cost = dist_to_black_stacks - dist_to_white_stacks + white_stack_heights
         return total_cost
 
-    def max_repeated_states(self):
+    def update_repeated_states(self):
         """
         Updates self.states_seen with current state and 
         returns the maximum number of times any state has been
         seen so far
         """
+        # TODO: Once is_legal_move() has been refactored to Game, incorporate the check part of this method
         board_state_as_tuples = Board.get_board_state_as_tuples(self.board.board_state)
         self.states_seen[board_state_as_tuples] += 1
+        sys.stderr.write(f"self.states_seen[{board_state_as_tuples}]: {self.states_seen[board_state_as_tuples]} \n")
 
-        max_repeated_states = max(self.states_seen.values())
-        sys.stderr.write(f"max_repeated_states: {max_repeated_states} \n")
-        return max_repeated_states
-
-
-    # TODO: refactor method to pull out 'white_wins()', 'black_wins()', 'draw()'
-    # so that get_AI_solution
-    # TODO: implement self.max_repeated_states
-    def game_has_ended(self, n_turns):
+    def game_has_ended(self): # (self, n_turns):
         # TODO: Implement draw conditions:
         # 1. One board configuration (with all stacks in the same position
         #    and quantity) occurs for a fourth time since the start of the game.
@@ -427,7 +431,6 @@ class Game:
         max_allowed_repeated_states = 4
         num_white_stacks = len(self.board.board_state["white"])
         num_black_stacks = len(self.board.board_state["black"])
-        max_repeated_states = self.max_repeated_states()
 
         if num_white_stacks == 0 and num_black_stacks == 0:
             sys.stderr.write("Draw: no stacks left on board \n")
@@ -441,12 +444,14 @@ class Game:
             sys.stderr.write("Black wins: no white stacks are left on board \n")
             return black_wins
         # TODO: check if this should be == or >
-        if n_turns == max_allowed_turns:
+        if self.n_turns == max_allowed_turns:
             sys.stderr.write("Draw: maximum number of turns (250) reached \n")
             return draw
         # TODO: check if this should be == or >
+        max_repeated_states = max(self.states_seen.values())
         if max_repeated_states == max_allowed_repeated_states:
             sys.stderr.write("Draw: maximum number of repeated board configurations (4) reached \n")
             return draw
 
         return game_has_not_ended
+

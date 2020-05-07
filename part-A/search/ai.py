@@ -53,7 +53,7 @@ class AI:
         sys.stderr.write(f"goal state found: {goal_node.board.board_state} \n")        
         sys.stderr.write(f"number of actions taken to achieve goal: {len(solution_sequence)} \n\n")
         sys.stderr.write(f"action sequence: \n")
-        sys.stderr.write("[is_boom, x_from, y_from, x_to, y_to, n_tokens], where x_to, y_to, n_tokens = -1 for boom action \n")
+        # sys.stderr.write("[is_boom, x_from, y_from, x_to, y_to, n_tokens], where x_to, y_to, n_tokens = -1 for boom action \n")
         for action in solution_sequence:
             sys.stderr.write(f"{action} \n")
 
@@ -275,7 +275,7 @@ class AI:
 
         total_cost = dist_to_black_stacks - dist_to_white_stacks + white_stack_heights
         return total_cost
-
+    # TODO - perhaps move the iteration over the stacks to Board (Game)
     def get_candidate_actions(self, board, node):
         colour = "white"
         candidate_actions = []
@@ -294,11 +294,16 @@ class AI:
         # need to set up a replica here so that we don't mutate board.board_state
         board_state_replica = deepcopy(board.board_state)
         new_board = Board(board_state_replica)
-        [is_boom, x_from, y_from, x_to, y_to, n_tokens] = action
+        # [is_boom, x_from, y_from, x_to, y_to, n_tokens] = action
         colour = "white"
-        if is_boom:
+        # if is_boom:
+        if action[0] == "BOOM":
+            x_from, y_from = action[1]
             new_board.boom(colour, x_from, y_from)
         else:
+            n_tokens = action[1]
+            x_from, y_from = action[2]
+            x_to, y_to = action[3]
             new_board.move(colour, n_tokens, x_from, y_from, x_to, y_to)
         return new_board
 
