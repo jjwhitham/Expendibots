@@ -37,11 +37,11 @@ def main():
                     initial_board_state[colour] = stacks_dict
         return initial_board_state
 
-    def get_ai_object():
+    def get_ai_object(colour):
         ai_object = None
         try:
             ai_algorithm = sys.argv[2]
-            ai_object = AI(ai_algorithm)
+            ai_object = AI(ai_algorithm, colour)
             sys.stderr.write(f"Running game in AI mode with algorithm: {ai_algorithm} \n")
         except IndexError:
             sys.stderr.write("Running game in manual mode \n")
@@ -51,27 +51,28 @@ def main():
         
         return ai_object
     
-    def play_game(initial_board_state, ai_object):
+    def play_game(initial_board_state, ai_object, colour):
         game = Game(initial_board_state, n_turns=0)
 
         # create a list which contains all moves required to get to goal state
         # make a generator from this list, which will yield the actions one-by-one
         if ai_object is not None:
-            ai_solution = ai_object.get_solution(game.board)
+            ai_solution = ai_object.get_solution(game)
             ai_solution_generator = (action for action in ai_solution)
 
         # n_turns = 0
         board_dict = game.get_board_dict()
         print_board(board_dict, unicode=True)
-
         # play game until an end state has been reached
         while not game.game_has_ended(): # game.game_has_ended(n_turns):
             
-            colour = "black"
-
+            
+            
             if ai_object is not None:
                 action = next(ai_solution_generator)
-            else:            
+            else:
+                whites_turn = game.n_turns % 2
+                colour = "white" if whites_turn else "black"            
                 action = game.get_next_action(colour)
 
             # if is_boom:
@@ -91,8 +92,9 @@ def main():
             print_board(game.get_board_dict(), unicode=True)
     
     initial_board_state = get_initial_board_state(sys.argv[1])
-    ai_object = get_ai_object()
-    play_game(initial_board_state, ai_object)
+    colour = "white"
+    ai_object = get_ai_object(colour)
+    play_game(initial_board_state, ai_object, colour)
         
 if __name__ == "__main__":
     main()

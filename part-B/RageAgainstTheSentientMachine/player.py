@@ -1,6 +1,8 @@
 from RageAgainstTheSentientMachine.game import Board, Game
+from RageAgainstTheSentientMachine.util import print_move, print_boom, print_board
+from RageAgainstTheSentientMachine.ai import AI
 
-class ExamplePlayer:
+class AbstractPlayer:
     def __init__(self, colour):
         """
         This method is called once at the beginning of the game to initialise
@@ -13,7 +15,7 @@ class ExamplePlayer:
         strings "white" or "black" correspondingly.
         """
         self.colour = colour
-        # TODO: 1. instantiate initial board
+
         initial_board_state = {
                 'white': {
                     (0, 0): 1, (0, 1): 1, (1, 1): 1, (1, 0): 1,
@@ -26,20 +28,9 @@ class ExamplePlayer:
                     (6, 6): 1, (6, 7): 1, (7, 7): 1, (7, 6): 1,
                 }
         }
-        # TODO: 2. instantiate game with board
-        self.game = Game(initial_board_state)
-        # TODO: 3. instantiate ai (pass in minimax as search)
-        # TODO: do this better!
-        self.ai_algorithm = None
-        # if colour == "white":
-        #     ai_algorithm = None
-        # elif colour == "black":
-        #     ai_algorithm = "alpha_beta_cutoff"
-        # else:
-        #     raise ValueError(f"colour is not 'black' or 'white'... colour: {colour}")
 
-        # if ai_algorithm is not None:
-        #     self.ai = AI(ai_algorithm)
+        self.game = Game(initial_board_state)
+
 
     def action(self):
         """
@@ -50,11 +41,7 @@ class ExamplePlayer:
         return an allowed action to play on this turn. The action must be
         represented based on the spec's instructions for representing actions.
         """
-        # if self.ai_algorithm is not None:
-        #     action = self.ai.get_next_action()
-        # else:
-        action = self.game.get_next_action(self.colour)
-        return action
+        pass
 
 
     def update(self, colour, action):
@@ -85,3 +72,30 @@ class ExamplePlayer:
             self.game.move(colour, n_tokens, x_from, y_from, x_to, y_to)
         else:
             raise ValueError(f"Received invalid action: {action}")
+        # turn is over, so make sure we're keeping count
+        self.game.n_turns += 1
+        
+class AIPlayer(AbstractPlayer):
+    def __init__(self, colour):
+        super().__init__(colour)
+        ai_algorithm = "alpha_beta_cutoff"
+        self.ai = AI(ai_algorithm, colour)
+    
+    # @override
+    def action(self):
+        board_dict = self.game.get_board_dict()
+        print_board(board_dict, unicode=True)
+
+        action = self.ai.get_next_action(self.game)
+        return action
+
+class ManualPlayer(AbstractPlayer):
+    def __init__(self, colour):
+        super().__init__(colour)
+
+    def action(self):
+        board_dict = self.game.get_board_dict()
+        print_board(board_dict, unicode=True)
+
+        action = self.game.get_next_action(self.colour)
+        return action
