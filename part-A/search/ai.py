@@ -37,7 +37,7 @@ class AI:
         sys.stderr.write(f"n_explored_nodes: {n_explored_nodes} \n")
 
         # solution_action_sequence = self.get_solution_action_sequence(goal_node)
-        return self.solution_action_sequence(goal_node)
+        return self.get_solution_action_sequence(goal_node)
 
     def get_solution_action_sequence(self, goal_node):
         """ Records actions from goal_node back up to start_node.

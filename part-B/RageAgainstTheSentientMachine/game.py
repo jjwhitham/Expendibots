@@ -77,7 +77,7 @@ class Board:
         Structure:
         ((((x_0, y_0), n_0), ((x_1, y_1), n_1), ...,)_wh, (((x_0, y_0), n_0), ...,)_bl)
         """
-        board_state = deepcopy(board_state)
+        # board_state = deepcopy(board_state)
         white_tuples = tuple(sorted(list(board_state['white'].items())))
         black_tuples = tuple(sorted(list(board_state['black'].items())))
         board_state_as_tuples = (white_tuples, black_tuples)
@@ -299,6 +299,8 @@ class Game:
 
         # check that this move won't result in a 4th repeat state
         new_board = Board(deepcopy(self.board.board_state))
+        # TODO: see if this is any quicker:
+        # new_board = deepcopy(self.board)
         new_board.move(colour, n_tokens, x_from, y_from, x_to, y_to)
         new_board_state_as_tuples = Board.get_board_state_as_tuples(new_board.board_state)        
         n_times_state_seen = self.states_seen.get(new_board_state_as_tuples)

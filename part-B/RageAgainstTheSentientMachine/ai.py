@@ -14,19 +14,20 @@ class AI:
         self.colour = colour
         self.opponent_colour = "black" if colour == "white" else "white"
 
-    def get_next_action(self, game_object):
+    def get_next_action(self, game):
         """
-        Calls the desired AI algorithm with the current game_object configuration.
+        Calls the desired AI algorithm with the current game configuration.
         Returns the next action as chosen by the AI alg.
         """
-        ai_game = deepcopy(game_object)
+        ## don't think this is needed here...
+        # game = deepcopy(game)
 
         lookup_ai_search_alg = {
             "alpha_beta_cutoff": self.alpha_beta_cutoff,
         }
         ai_search_alg = lookup_ai_search_alg[self.ai_algorithm]
 
-        next_action = ai_search_alg(ai_game)
+        next_action = ai_search_alg(game)
 
         # sys.stderr.write(f"next_action: {next_action} \n")
         return next_action
@@ -69,7 +70,7 @@ class AI:
                 best_action = action
         return best_action
 
-    def alpha_beta_cutoff(self, game, d=1, cutoff_test=None, evaluation_function=None):
+    def alpha_beta_cutoff(self, game, d=3, cutoff_test=None, evaluation_function=None):
         """
         Code adapted from AIMA repository:
         https://github.com/aimacode/aima-python/blob/master/games.py

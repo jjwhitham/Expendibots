@@ -3,7 +3,9 @@ __pycache__
 .python_version
 .vscode
 stderr.txt
+stdout.txt
 .DS_Store
 .sandbox
 stderr.txt
 game.log
+*.prof

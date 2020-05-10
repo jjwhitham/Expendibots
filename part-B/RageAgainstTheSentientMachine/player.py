@@ -1,3 +1,5 @@
+import sys
+
 from RageAgainstTheSentientMachine.game import Board, Game
 from RageAgainstTheSentientMachine.util import print_move, print_boom, print_board
 from RageAgainstTheSentientMachine.ai import AI
@@ -64,11 +66,13 @@ class AbstractPlayer:
         """
         if action[0] == "BOOM":
             x, y = action[1]
+            sys.stderr.write(f"BOOM ({x}, {y})")
             self.game.boom(colour, x, y)
         elif action[0] == "MOVE":
             n_tokens = action[1]
             x_from, y_from = action[2]
             x_to, y_to = action[3]
+            sys.stderr.write(f"MOVE {n_tokens} from ({x_from}, {y_from}) to ({x_to}, {y_to})")
             self.game.move(colour, n_tokens, x_from, y_from, x_to, y_to)
         else:
             raise ValueError(f"Received invalid action: {action}")

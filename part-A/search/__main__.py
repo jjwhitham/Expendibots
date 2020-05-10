@@ -64,13 +64,14 @@ def main():
         board_dict = game.get_board_dict()
         print_board(board_dict, unicode=True)
         # play game until an end state has been reached
-        while not game.game_has_ended(): # game.game_has_ended(n_turns):
+        while not game.game_has_ended(colour): # TODO: Need to change this for manual play below
             
             
             
             if ai_object is not None:
                 action = next(ai_solution_generator)
             else:
+                # TODO: manual play, alternating colours (need to fix game has ended above)
                 whites_turn = game.n_turns % 2
                 colour = "white" if whites_turn else "black"            
                 action = game.get_next_action(colour)
