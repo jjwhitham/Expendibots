@@ -121,10 +121,10 @@ class Game:
         """
         # sys.stderr.write(f"{colour}'s turn:")
 
-        # print heuristic value 
-        height_cost_factor = 2
-        heuristic_value = self.heuristic_simple(self.board.board_state, height_cost_factor)
-        print(f"heuristic_value: {heuristic_value}")
+        ## print heuristic value 
+        # height_cost_factor = 2
+        # heuristic_value = self.heuristic_simple(self.board.board_state, height_cost_factor)
+        # print(f"heuristic_value: {heuristic_value}")
 
         # boom action or not? 0 or 1
         is_boom = input("is_boom: ")
@@ -192,6 +192,7 @@ class Game:
             return
         self.board.move(colour, n_tokens, x_from, y_from, x_to, y_to)
         self.update_repeated_states()
+        self.n_turns += 1
 
     def boom(self, colour, x, y):
         """
@@ -200,10 +201,11 @@ class Game:
         # check for legal boom action
         coords = (x, y)
         if not self.is_legal_boom(colour, coords):
-            sys.stderr.write("Not a legal move! \n")
+            sys.stderr.write("Boom by {colour} at {coords} is not legal! \n")
             return
         self.board.boom(colour, x, y)
         self.update_repeated_states()
+        self.n_turns += 1
     
     def is_legal_move(self, colour, n_tokens, x_from, y_from, x_to, y_to, is_debug):
         """ 
@@ -309,18 +311,19 @@ class Game:
                 sys.stderr.write("Opponent's stack already exists here!")
             return False
 
+        # TODO: test and accept this -> allowing 4 repeat states as a legal move, utility func to guide move selection
         # check that this move won't result in a 4th repeat state
-        new_board = self.board.deepcopy() # Board(deepcopy(self.board.board_state))
-        # TODO: see if this is any quicker:
-        # new_board = deepcopy(self.board)
-        new_board.move(colour, n_tokens, x_from, y_from, x_to, y_to)
-        new_board_state_as_tuples = Board.get_board_state_as_tuples(new_board.board_state)        
-        n_times_state_seen = self.states_seen.get(new_board_state_as_tuples)
-        if n_times_state_seen == 3:
-            if is_debug:
-                sys.stderr.write(err_msg)
-                sys.stderr.write(f"Seen this state {n_times_state_seen} times already, cannot move here. \n")
-            return False
+        # new_board = self.board.deepcopy()
+        # new_board.move(colour, n_tokens, x_from, y_from, x_to, y_to)
+        # new_board_state_as_tuples = Board.get_board_state_as_tuples(new_board.board_state)        
+        # n_times_state_seen = self.states_seen.get(new_board_state_as_tuples)
+        # if n_times_state_seen == 3:
+        #     # TODO: get rid of this switch...
+        #     is_debug = True
+        #     if is_debug:
+        #         sys.stderr.write(err_msg)
+        #         sys.stderr.write(f"Seen this state {n_times_state_seen} times already, cannot move here. \n")
+        #     return False
 
         # everything above is okay, so the move is legal
         return True
@@ -338,12 +341,15 @@ class Game:
             # TODO: Move ordering - put BOOM first? Perhaps bad for start game, good for middle/end game
             candidate_actions_stack.append(("BOOM", (x_from, y_from)))
             for i in range(1, n_tokens + 1):
+                coords_diffs = [(0, i), (-i, 0), (i, 0), (0, -i)]
+                if colour == "black":
+                    coords_diffs.reverse() # black looks from the other direction
                 for j in range(1, n_tokens + 1):
-                    for coords_diff in {(i, 0), (-i, 0), (0, i), (0, -i)}:
+                    for coords_diff in coords_diffs: # {(i, 0), (-i, 0), (0, i), (0, -i)}:
                         x_to = x_from + coords_diff[0]
                         y_to = y_from + coords_diff[1]
                         n_tokens_move = j
-                        if self.is_legal_move(colour, n_tokens_move, x_from, y_from, x_to, y_to, True):
+                        if self.is_legal_move(colour, n_tokens_move, x_from, y_from, x_to, y_to, False):
                             candidate_actions_stack.append(("MOVE", n_tokens_move, (x_from, y_from), (x_to, y_to)))           
             return candidate_actions_stack
 
@@ -357,7 +363,7 @@ class Game:
     def is_legal_boom(self, colour, coords):
         # check that stack of correct colour exists at desired boom coordinates
         if coords not in self.board.board_state[colour]:
-            # sys.stderr.write(f"No {colour} stack at {coords}!")
+            sys.stderr.write(f"is_legal_boom(): No {colour} stack at {coords}!")
             return False
         return True
     
@@ -424,7 +430,7 @@ class Game:
         num_opponent_tokens = sum(self.board.board_state[opponent_colour].values())
 
         if num_player_tokens == 0 and num_opponent_tokens == 0:
-            sys.stderr.write("Draw: no stacks left on board \n")
+            # sys.stderr.write("Draw: no stacks left on board \n")
             return DRAW
 
         if num_opponent_tokens == 0:

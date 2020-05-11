@@ -31,7 +31,7 @@ class AbstractPlayer:
                 }
         }
         board = Board(initial_board_state)
-        self.game = Game(board) # Game(initial_board_state)
+        self.game = Game(board)
 
 
     def action(self):
@@ -66,18 +66,18 @@ class AbstractPlayer:
         """
         if action[0] == "BOOM":
             x, y = action[1]
-            sys.stderr.write(f"BOOM ({x}, {y})")
+            # sys.stderr.write(f"BOOM ({x}, {y})")
             self.game.boom(colour, x, y)
         elif action[0] == "MOVE":
             n_tokens = action[1]
             x_from, y_from = action[2]
             x_to, y_to = action[3]
-            sys.stderr.write(f"MOVE {n_tokens} from ({x_from}, {y_from}) to ({x_to}, {y_to})")
+            # sys.stderr.write(f"MOVE {n_tokens} from ({x_from}, {y_from}) to ({x_to}, {y_to})")
             self.game.move(colour, n_tokens, x_from, y_from, x_to, y_to)
         else:
             raise ValueError(f"Received invalid action: {action}")
-        # turn is over, so make sure we're keeping count
-        self.game.n_turns += 1
+        # turn is over, so make sure we're keeping count -> moved to game.boom()
+        # self.game.n_turns += 1
         
 class AIPlayer(AbstractPlayer):
     def __init__(self, colour):
@@ -87,8 +87,8 @@ class AIPlayer(AbstractPlayer):
     
     # @override
     def action(self):
-        board_dict = self.game.get_board_dict()
-        print_board(board_dict, unicode=True)
+        # board_dict = self.game.get_board_dict()
+        # print_board(board_dict, unicode=True)
 
         action = self.ai.get_next_action(self.game)
         return action
@@ -97,9 +97,10 @@ class ManualPlayer(AbstractPlayer):
     def __init__(self, colour):
         super().__init__(colour)
 
+    # @override
     def action(self):
-        board_dict = self.game.get_board_dict()
-        print_board(board_dict, unicode=True)
+        # board_dict = self.game.get_board_dict()
+        # print_board(board_dict, unicode=True)
 
         action = self.game.get_next_action(self.colour)
         return action

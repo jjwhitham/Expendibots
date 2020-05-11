@@ -1,8 +1,4 @@
 import sys
-# for copying nested structures
-from copy import deepcopy
-# for implementing priority queues
-from queue import PriorityQueue
 import numpy as np
 
 from RageAgainstTheSentientMachine.game import Board, Game
@@ -19,8 +15,6 @@ class AI:
         Calls the desired AI algorithm with the current game configuration.
         Returns the next action as chosen by the AI alg.
         """
-        ## don't think this is needed here...
-        # game = deepcopy(game)
 
         lookup_ai_search_alg = {
             "alpha_beta_cutoff": self.alpha_beta_cutoff,
@@ -70,13 +64,23 @@ class AI:
                 best_action = action
         return best_action
 
-    def alpha_beta_cutoff(self, game, d=3, cutoff_test=None, evaluation_function=None):
+    def alpha_beta_cutoff(self, game, d=1, cutoff_test=None, evaluation_function=None):
         """
         Code adapted from AIMA repository:
         https://github.com/aimacode/aima-python/blob/master/games.py
         """
         colour = self.colour
         opponent_colour = self.opponent_colour
+
+        ## playing around with cutoff depths...
+        d = 1 if colour == "black" else 2
+        
+        # if colour == "black":
+        #     d = 0
+        # elif colour == "white":
+        #     if sum(game.board.board_state[colour].values()) != 12 or sum(game.board.board_state[colour].values()) != 12:
+        #         d = 2
+        #         sys.stderr.write(f"changing to d={d}! \n")
 
         def max_value(game, alpha, beta, depth):
             if cutoff_test(game, depth):
@@ -152,24 +156,25 @@ class AI:
         OPPONENT_WINS = 2
         DRAW = 3
         
-        # if result == GAME_HAS_NOT_ENDED:
-        #     utility_value = self.evaluation_function(game)
-        # elif result == PLAYER_WINS:
-        #     utility_value = 12
-        # elif result == OPPONENT_WINS:
-        #     utility_value == -12
-        # elif result == DRAW:
-        #     utility_value == 0
-
-        # this block is the same as above, just a bit cleaner to use a dict
-        utility_value = {
-            GAME_HAS_NOT_ENDED: self.evaluation_function(game),
-            PLAYER_WINS: 12,
-            OPPONENT_WINS: -12,
-            DRAW: 0
-        }
         result = game.game_has_ended(colour)
-        return utility_value[result]
+        if result == GAME_HAS_NOT_ENDED:
+            utility_value = self.evaluation_function(game)
+        elif result == PLAYER_WINS:
+            utility_value = 12
+        elif result == OPPONENT_WINS:
+            utility_value = -12
+        elif result == DRAW:
+            utility_value = 0
+
+        # # this block is the same as above, just a bit cleaner to use a dict
+        # utility_value = {
+        #     GAME_HAS_NOT_ENDED: self.evaluation_function(game),
+        #     PLAYER_WINS: 12,
+        #     OPPONENT_WINS: -12,
+        #     DRAW: 0
+        # }
+        
+        return utility_value # utility_value[result]
         
 
     def evaluation_function(self, game):
