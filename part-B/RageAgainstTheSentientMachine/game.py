@@ -67,6 +67,16 @@ class Board:
                 if coords in colour_stacks:
                     self.boom(colour, coords[0], coords[1])
     
+    def deepcopy(self):
+        board_state = self.board_state
+        return self._deepcopy(board_state)    
+    @classmethod
+    def _deepcopy(cls, board_state):
+        new_board_state = {}
+        for colour in board_state:
+            new_board_state[colour] = {coords: n_tokens for coords, n_tokens in board_state[colour].items()}
+        return cls(new_board_state)
+
     @staticmethod
     def get_board_state_as_tuples(board_state):
         """
@@ -78,8 +88,8 @@ class Board:
         ((((x_0, y_0), n_0), ((x_1, y_1), n_1), ...,)_wh, (((x_0, y_0), n_0), ...,)_bl)
         """
         # board_state = deepcopy(board_state)
-        white_tuples = tuple(sorted(list(board_state['white'].items())))
-        black_tuples = tuple(sorted(list(board_state['black'].items())))
+        white_tuples = tuple(sorted(board_state['white'].items()))
+        black_tuples = tuple(sorted(board_state['black'].items()))
         board_state_as_tuples = (white_tuples, black_tuples)
         return board_state_as_tuples
 
@@ -91,11 +101,13 @@ class Game:
     Provides methods for updating game state, checking game rules, taking user input
     for manual play, 
     """
-    def __init__(self, initial_board_state, states_seen=defaultdict(int), n_turns=0):
-        self.board = Board(initial_board_state)
+    def __init__(self, board, states_seen=None, n_turns=0): # initial_board_state
+        self.board = board # Board(initial_board_state)
         self.states_seen = states_seen
         self.n_turns = n_turns
-        self.update_repeated_states()
+        if states_seen == None:
+            self.states_seen = defaultdict(int)
+            self.update_repeated_states() # TODO: this could be the bug...
         
     def get_board_dict(self):
         """
@@ -298,7 +310,7 @@ class Game:
             return False
 
         # check that this move won't result in a 4th repeat state
-        new_board = Board(deepcopy(self.board.board_state))
+        new_board = self.board.deepcopy() # Board(deepcopy(self.board.board_state))
         # TODO: see if this is any quicker:
         # new_board = deepcopy(self.board)
         new_board.move(colour, n_tokens, x_from, y_from, x_to, y_to)
@@ -331,7 +343,7 @@ class Game:
                         x_to = x_from + coords_diff[0]
                         y_to = y_from + coords_diff[1]
                         n_tokens_move = j
-                        if self.is_legal_move(colour, n_tokens_move, x_from, y_from, x_to, y_to, False):
+                        if self.is_legal_move(colour, n_tokens_move, x_from, y_from, x_to, y_to, True):
                             candidate_actions_stack.append(("MOVE", n_tokens_move, (x_from, y_from), (x_to, y_to)))           
             return candidate_actions_stack
 
@@ -433,3 +445,12 @@ class Game:
             return DRAW
 
         return GAME_HAS_NOT_ENDED
+
+    def deepcopy(self):
+        board = self.board.deepcopy()
+        states_seen = self.states_seen.copy() # copy is sufficiently deep here (tested in Python 3.6.3 shell)
+        n_turns = self.n_turns
+        return self._deepcopy(board, states_seen, n_turns)
+    @classmethod
+    def _deepcopy(cls, board, states_seen, n_turns):
+        return cls(board, states_seen, n_turns)

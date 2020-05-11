@@ -30,8 +30,8 @@ class AbstractPlayer:
                     (6, 6): 1, (6, 7): 1, (7, 7): 1, (7, 6): 1,
                 }
         }
-
-        self.game = Game(initial_board_state)
+        board = Board(initial_board_state)
+        self.game = Game(board) # Game(initial_board_state)
 
 
     def action(self):

@@ -125,7 +125,7 @@ class AI:
         This is the 'Transition Model'
         Returns a new bame (state/vertex) by applying an action (edge)
         """
-        new_game = deepcopy(game)
+        new_game = game.deepcopy() # deepcopy(game)
 
         if action[0] == "BOOM":
             x_from, y_from = action[1]
