@@ -6,4 +6,5 @@
 # it into this module with the name 'Player':
 
 from RageAgainstTheSentientMachine.player import AIPlayer as Player
+from RageAgainstTheSentientMachine.player import AIPlayerU2
 from RageAgainstTheSentientMachine.player import ManualPlayer

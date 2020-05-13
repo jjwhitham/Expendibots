@@ -2,7 +2,7 @@ import sys
 
 from RageAgainstTheSentientMachine.game import Board, Game
 from RageAgainstTheSentientMachine.util import print_move, print_boom, print_board
-from RageAgainstTheSentientMachine.ai import AI
+from RageAgainstTheSentientMachine.ai import AI, AIU2
 
 class AbstractPlayer:
     def __init__(self, colour):
@@ -84,6 +84,20 @@ class AIPlayer(AbstractPlayer):
         super().__init__(colour)
         ai_algorithm = "alpha_beta_cutoff"
         self.ai = AI(ai_algorithm, colour)
+    
+    # @override
+    def action(self):
+        # board_dict = self.game.get_board_dict()
+        # print_board(board_dict, unicode=True)
+
+        action = self.ai.get_next_action(self.game)
+        return action
+
+class AIPlayerU2(AIPlayer):
+    def __init__(self, colour):
+        super().__init__(colour)
+        ai_algorithm = "alpha_beta_cutoff"
+        self.ai = AIU2(ai_algorithm, colour)
     
     # @override
     def action(self):

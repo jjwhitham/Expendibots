@@ -64,7 +64,7 @@ class AI:
                 best_action = action
         return best_action
 
-    def alpha_beta_cutoff(self, game, d=1, cutoff_test=None, evaluation_function=None):
+    def alpha_beta_cutoff(self, game, d=2, cutoff_test=None, evaluation_function=None):
         """
         Code adapted from AIMA repository:
         https://github.com/aimacode/aima-python/blob/master/games.py
@@ -73,7 +73,7 @@ class AI:
         opponent_colour = self.opponent_colour
 
         ## playing around with cutoff depths...
-        d = 1 if colour == "black" else 2
+        # d = 2 if colour == "black" else 0
         
         # if colour == "black":
         #     d = 0
@@ -117,7 +117,6 @@ class AI:
                 best_score = value
                 best_action = action
         return best_action
-
 
     def get_candidate_actions(self, game, colour):
         candidate_actions = game.get_candidate_actions(colour)
@@ -175,7 +174,6 @@ class AI:
         # }
         
         return utility_value # utility_value[result]
-        
 
     def evaluation_function(self, game):
         """
@@ -190,3 +188,45 @@ class AI:
 
     def cutoff_test(self, game):
         pass
+
+class AIU2(AI):
+    def __init__(self, ai_algorithm, colour):
+        super().__init__(ai_algorithm, colour)
+    
+    # @override
+    def utility_function(self, game):
+        """
+        This simple utility function just returns +/- 12 for the player/opponent
+        winning, 0 for a draw, or the difference in tokens if the game is not yet over (eval func)
+        """
+        colour = self.colour
+        opponent_colour = self.opponent_colour
+        
+        GAME_HAS_NOT_ENDED = 0
+        PLAYER_WINS = 1
+        OPPONENT_WINS = 2
+        DRAW = 3
+        
+        result = game.game_has_ended(colour)
+        if result == GAME_HAS_NOT_ENDED:
+            n_player_tokens = sum(game.board.board_state[colour].values())
+            n_opponent_tokens = sum(game.board.board_state[opponent_colour].values())
+            utility_value = (n_player_tokens - n_opponent_tokens) / (n_player_tokens + n_opponent_tokens)
+            # push utility values away from zero, so a draw (0) is less desirable than n_player_tokens = n_opponent_tokens
+            # # white's turn
+            # if game.n_turns % 2 == 0: utility_value += 1
+            # # black's turn
+            # elif game.n_turns % 2 == 1: utility_value -= 1
+            # else: raise ValueError(f"Something went wrong! game.n_turns: {game.n_turns}")
+        elif result == PLAYER_WINS:
+            utility_value = 12
+        elif result == OPPONENT_WINS:
+            utility_value = -12
+        elif result == DRAW:
+            utility_value = 0
+
+        
+        
+        return utility_value
+      
+            
