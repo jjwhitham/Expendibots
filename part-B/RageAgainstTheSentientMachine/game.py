@@ -87,7 +87,6 @@ class Board:
         Structure:
         ((((x_0, y_0), n_0), ((x_1, y_1), n_1), ...,)_wh, (((x_0, y_0), n_0), ...,)_bl)
         """
-        # board_state = deepcopy(board_state)
         white_tuples = tuple(sorted(board_state['white'].items()))
         black_tuples = tuple(sorted(board_state['black'].items()))
         board_state_as_tuples = (white_tuples, black_tuples)
@@ -101,13 +100,13 @@ class Game:
     Provides methods for updating game state, checking game rules, taking user input
     for manual play, 
     """
-    def __init__(self, board, states_seen=None, n_turns=0): # initial_board_state
-        self.board = board # Board(initial_board_state)
+    def __init__(self, board, states_seen=None, n_turns=0):
+        self.board = board
         self.states_seen = states_seen
         self.n_turns = n_turns
         if states_seen == None:
             self.states_seen = defaultdict(int)
-            self.update_repeated_states() # TODO: this could be the bug...
+            self.update_repeated_states()
         
     def get_board_dict(self):
         """
@@ -120,11 +119,6 @@ class Game:
         Allows the game to be played manually by taking input from stdin.
         """
         # sys.stderr.write(f"{colour}'s turn:")
-
-        ## print heuristic value 
-        # height_cost_factor = 2
-        # heuristic_value = self.heuristic_simple(self.board.board_state, height_cost_factor)
-        # print(f"heuristic_value: {heuristic_value}")
 
         # boom action or not? 0 or 1
         is_boom = input("is_boom: ")
@@ -311,20 +305,6 @@ class Game:
                 sys.stderr.write("Opponent's stack already exists here!")
             return False
 
-        # TODO: test and accept this -> allowing 4 repeat states as a legal move, utility func to guide move selection
-        # check that this move won't result in a 4th repeat state
-        # new_board = self.board.deepcopy()
-        # new_board.move(colour, n_tokens, x_from, y_from, x_to, y_to)
-        # new_board_state_as_tuples = Board.get_board_state_as_tuples(new_board.board_state)        
-        # n_times_state_seen = self.states_seen.get(new_board_state_as_tuples)
-        # if n_times_state_seen == 3:
-        #     # TODO: get rid of this switch...
-        #     is_debug = True
-        #     if is_debug:
-        #         sys.stderr.write(err_msg)
-        #         sys.stderr.write(f"Seen this state {n_times_state_seen} times already, cannot move here. \n")
-        #     return False
-
         # everything above is okay, so the move is legal
         return True
 
@@ -338,26 +318,51 @@ class Game:
             Finds all the legal moves for a particular stack.
             """
             candidate_actions_stack = []
-            # TODO: Move ordering - put BOOM first? Perhaps bad for start game, good for middle/end game
-            candidate_actions_stack.append(("BOOM", (x_from, y_from)))
-            for i in range(1, n_tokens + 1):
-                coords_diffs = [(0, i), (-i, 0), (i, 0), (0, -i)]
-                if colour == "black":
-                    coords_diffs.reverse() # black looks from the other direction
-                for j in range(1, n_tokens + 1):
+
+            # MOVE j tokens
+            for j in range(n_tokens, 0, -1):
+                # MOVE i squares
+                for i in range(n_tokens, 0, -1):
+                    coords_diffs = [(0, i), (-i, 0), (i, 0), (0, -i)]
+                    if colour == "black":
+                        coords_diffs.reverse() # black looks from the other direction
                     for coords_diff in coords_diffs: # {(i, 0), (-i, 0), (0, i), (0, -i)}:
+                        # TODO: get rid of illegal coordinates right here. Check for membership with board coords
                         x_to = x_from + coords_diff[0]
                         y_to = y_from + coords_diff[1]
                         n_tokens_move = j
                         if self.is_legal_move(colour, n_tokens_move, x_from, y_from, x_to, y_to, False):
-                            candidate_actions_stack.append(("MOVE", n_tokens_move, (x_from, y_from), (x_to, y_to)))           
+                            candidate_actions_stack.append(("MOVE", n_tokens_move, (x_from, y_from), (x_to, y_to)))
             return candidate_actions_stack
+
+        def sort_stacks(colour_tups, colour):
+            colour_tups = sorted(colour_tups, key=lambda tup: tup[1])
+            if colour == "white":
+                colour_tups = sorted(colour_tups, key=lambda tup: tup[0])
+            elif colour == "black":
+                colour_tups = sorted(colour_tups, key=lambda tup: tup[0], reverse=True)
+            else:
+                raise ValueError(f"Something went wrong, colour: {colour}")
+            return colour_tups
+
 
         # for each stack get a list of legal actions
         candidate_actions = []
+
+        # TODO: Move ordering - keep BOOM first?
+        # BOOMs
         for coords, n_tokens in self.board.board_state[colour].items():
-            candidate_actions_stack = get_candidate_actions_stack(colour, n_tokens, coords[0], coords[1])
-            candidate_actions.extend(candidate_actions_stack)           
+            x_from, y_from = coords[0], coords[1]
+            candidate_actions.append(("BOOM", (x_from, y_from)))
+        # MOVEs
+
+        stacks_tuples = tuple(self.board.board_state[colour].items())
+        stacks_sorted = sort_stacks(stacks_tuples, colour)
+        
+        for tup in stacks_sorted:
+            x_from, y_from, n_tokens = tup[0][0], tup[0][1], tup[1]
+            candidate_actions_stack = get_candidate_actions_stack(colour, n_tokens, x_from, y_from)
+            candidate_actions.extend(candidate_actions_stack)         
         return candidate_actions
  
     def is_legal_boom(self, colour, coords):
@@ -382,7 +387,6 @@ class Game:
             total_dist = x_dist + y_dist
             return total_dist
 
-        # TODO: get rid of double counting
         dist_to_black_stacks = 0
         dist_to_white_stacks = 0
         white_stack_heights = 0
@@ -440,11 +444,11 @@ class Game:
         if num_player_tokens == 0:
             # sys.stderr.write(f"{opponent_colour} wins: no player stacks are left on board \n")
             return OPPONENT_WINS
-        # TODO: check if this should be == or >
+
         if self.n_turns == MAX_ALLOWED_TURNS:
             sys.stderr.write("Draw: maximum number of turns/player (250) reached \n")
             return DRAW
-        # TODO: check if this should be == or >
+
         max_repeated_states = max(self.states_seen.values())
         if max_repeated_states == MAX_ALLOWED_REPEATED_STATES:
             sys.stderr.write("Draw: maximum number of repeated board configurations (4) reached \n")

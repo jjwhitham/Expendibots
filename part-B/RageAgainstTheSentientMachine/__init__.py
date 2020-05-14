@@ -5,7 +5,7 @@
 # example import below, you can define it in another file and import
 # it into this module with the name 'Player':
 
-from RageAgainstTheSentientMachine.player import AIPlayer as Player
+from RageAgainstTheSentientMachine.player import AIPlayer
 from RageAgainstTheSentientMachine.player import AIPlayerU2
 from RageAgainstTheSentientMachine.player import ManualPlayer
 from RageAgainstTheSentientMachine.player import AIPlayerGreedy
