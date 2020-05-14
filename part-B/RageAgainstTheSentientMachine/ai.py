@@ -1,14 +1,16 @@
 import sys
 import numpy as np
+import random
 
 from RageAgainstTheSentientMachine.game import Board, Game
 
 
 class AI:
-    def __init__(self, ai_algorithm, colour):
+    def __init__(self, ai_algorithm, colour, depth=2):
         self.ai_algorithm = ai_algorithm
         self.colour = colour
         self.opponent_colour = "black" if colour == "white" else "white"
+        self.depth = depth
 
     def get_next_action(self, game):
         """
@@ -21,7 +23,7 @@ class AI:
         }
         ai_search_alg = lookup_ai_search_alg[self.ai_algorithm]
 
-        next_action = ai_search_alg(game)
+        next_action = ai_search_alg(game, d=self.depth)
 
         # sys.stderr.write(f"next_action: {next_action} \n")
         return next_action
@@ -189,6 +191,7 @@ class AI:
     def cutoff_test(self, game):
         pass
 
+
 class AIU2(AI):
     def __init__(self, ai_algorithm, colour):
         super().__init__(ai_algorithm, colour)
@@ -228,5 +231,105 @@ class AIU2(AI):
         
         
         return utility_value
-      
             
+
+class AIGreedy(AI):
+    def __init__(self, ai_algorithm, colour, depth=0):
+        super().__init__(ai_algorithm, colour, depth=depth)
+
+
+class AIRandom(AI):
+    def __init__(self, ai_algorithm, colour, depth=2):
+        super().__init__(ai_algorithm, colour, depth=depth)
+    
+    # @override
+    def get_next_action(self, game):
+        actions = game.get_candidate_actions(self.colour)
+        return random.choice(actions)
+
+class AIGreedyBoom(AI):
+    def __init__(self, ai_algorithm, colour):
+        super().__init__(ai_algorithm, colour)
+
+    # @override
+    def alpha_beta_cutoff(self, game, d=2, cutoff_test=None, evaluation_function=None):
+        """
+        Code adapted from AIMA repository:
+        https://github.com/aimacode/aima-python/blob/master/games.py
+        """
+        colour = self.colour
+        opponent_colour = self.opponent_colour
+
+        def max_value(game, alpha, beta, depth):
+            if cutoff_test(game, depth):
+                return evaluation_function(game)
+            value = -np.inf
+            for action in self.get_candidate_actions(game, colour):
+                new_game = self.apply_action(game, action, colour)
+                # greedy BOOM start
+                if action[0] == "BOOM":
+                    # for Max a net negative eval value is a chop
+                    eval_boom = evaluation_function(new_game)
+                    eval_change = eval_boom - evaluation_function(game)
+                    if eval_change < 0:
+                        continue
+                    elif eval_change >= 0:
+                        value = eval_boom
+                # greedy BOOM over
+                else: # action == "MOVE"
+                    value = max(value, min_value(new_game, alpha, beta, depth + 1))
+                if value >= beta:
+                    return value
+                alpha = max(alpha, value)
+            return value
+            
+        def min_value(game, alpha, beta, depth):
+            if cutoff_test(game, depth):
+                return evaluation_function(game)
+            value = np.inf
+            for action in self.get_candidate_actions(game, opponent_colour):
+                new_game = self.apply_action(game, action, opponent_colour)
+                # greedy BOOM start
+                if action[0] == "BOOM":
+                    # for Min a net positive eval value is a chop
+                    eval_boom = evaluation_function(new_game)
+                    eval_change = eval_boom - evaluation_function(game)
+                    if eval_change > 0:
+                        continue
+                    elif eval_change <= 0:
+                        value = eval_boom
+                # greedy BOOM over
+                else: # action == "MOVE"
+                    value = min(value, max_value(new_game, alpha, beta, depth + 1))
+                if value <= alpha:
+                    return value
+                beta = min(beta, value)
+            return value
+
+        cutoff_test = cutoff_test or (lambda game, depth: depth > d or self.terminal_test(game))
+        evaluation_function = evaluation_function or (lambda game: self.utility_function(game)) # change to self.evaluation_function?
+
+        best_score = -np.inf
+        beta = np.inf
+        depth = 1
+        best_action = None
+        for action in self.get_candidate_actions(game, colour):
+            new_game = self.apply_action(game, action, colour)
+            # greedy BOOM start
+            if action[0] == "BOOM":
+                # for Max a net negative eval value is a chop
+                eval_boom = evaluation_function(new_game)
+                eval_change = eval_boom - evaluation_function(game)
+                if eval_change < 0:
+                    continue
+                elif eval_change >= 0:
+                    value = eval_boom
+            # greedy BOOM over
+            else: # action == "MOVE"
+                value = min_value(new_game, best_score, beta, depth)
+            if value > best_score:
+                best_score = value
+                best_action = action
+        return best_action
+
+

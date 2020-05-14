@@ -8,3 +8,6 @@
 from RageAgainstTheSentientMachine.player import AIPlayer as Player
 from RageAgainstTheSentientMachine.player import AIPlayerU2
 from RageAgainstTheSentientMachine.player import ManualPlayer
+from RageAgainstTheSentientMachine.player import AIPlayerGreedy
+from RageAgainstTheSentientMachine.player import AIPlayerRandom
+from RageAgainstTheSentientMachine.player import AIPlayerGreedyBoom
