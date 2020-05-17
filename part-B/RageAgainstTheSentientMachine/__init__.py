@@ -11,3 +11,6 @@ from RageAgainstTheSentientMachine.player import ManualPlayer
 from RageAgainstTheSentientMachine.player import AIPlayerGreedy
 from RageAgainstTheSentientMachine.player import AIPlayerRandom
 from RageAgainstTheSentientMachine.player import AIPlayerGreedyBoom
+from RageAgainstTheSentientMachine.player import AIPlayerOpeningMoves
+from RageAgainstTheSentientMachine.player import AIPlayerDistHeuristic
+from RageAgainstTheSentientMachine.player import AIPlayerDistAndOpeningMoves

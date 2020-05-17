@@ -11,14 +11,12 @@ class AbstractPlayer:
         self.colour = colour
         initial_board_state = {
                 'white': {
-                    (0, 0): 1, (0, 1): 1, (1, 1): 1, (1, 0): 1,
-                    (3, 0): 1, (3, 1): 1, (4, 1): 1, (4, 0): 1,
-                    (6, 0): 1, (6, 1): 1, (7, 1): 1, (7, 0): 1,
+                    (0, 0): 1, (1, 0): 1, (3, 0): 1, (4, 0): 1, (6, 0): 1, (7, 0): 1,
+                    (0, 1): 1, (1, 1): 1, (3, 1): 1, (4, 1): 1, (6, 1): 1, (7, 1): 1,
                 },
                 'black': {
-                    (0, 6): 1, (0, 7): 1, (1, 7): 1, (1, 6): 1,
-                    (3, 6): 1, (3, 7): 1, (4, 7): 1, (4, 6): 1,
-                    (6, 6): 1, (6, 7): 1, (7, 7): 1, (7, 6): 1,
+                    (7, 7): 1, (6, 7): 1, (4, 7): 1, (3, 7): 1, (1, 7): 1, (0, 7): 1,
+                    (7, 6): 1, (6, 6): 1, (4, 6): 1, (3, 6): 1, (1, 6): 1, (0, 6): 1,
                 }
         }
         board = Board(initial_board_state)
@@ -39,6 +37,16 @@ class AbstractPlayer:
         else:
             raise ValueError(f"Received invalid action: {action}")
 
+
+class ManualPlayer(AbstractPlayer):
+    def __init__(self, colour):
+        super().__init__(colour)
+
+    # @override
+    def action(self):
+        action = self.game.get_next_action(self.colour)
+        return action
+
         
 class AIPlayer(AbstractPlayer):
     def __init__(self, colour, ai_algorithm="alpha_beta_cutoff", depth=2):
@@ -55,6 +63,8 @@ class AIPlayer(AbstractPlayer):
         Returns the next action as chosen by the AI alg.
         """
         game = self.game
+        # print(f"heuristic_simple: {game.heuristic_simple(game.board.board_state, 0)}")
+
         lookup_ai_search_alg = {
             "alpha_beta_cutoff": self.alpha_beta_cutoff,
         }
@@ -100,7 +110,7 @@ class AIPlayer(AbstractPlayer):
                 best_score = value
                 best_action = action
         return best_action
-
+    # TODO: get rid of cutoff and eval params
     def alpha_beta_cutoff(self, game, d=2, cutoff_test=None, evaluation_function=None):
         """
         Code adapted from AIMA repository:
@@ -109,15 +119,30 @@ class AIPlayer(AbstractPlayer):
         colour = self.colour
         opponent_colour = self.opponent_colour
 
+
+
         ## playing around with cutoff depths...
-        # d = 2 if colour == "black" else 0
-        
-        # if colour == "black":
-        #     d = 0
-        # elif colour == "white":
-        #     if sum(game.board.board_state[colour].values()) != 12 or sum(game.board.board_state[colour].values()) != 12:
-        #         d = 2
-        #         sys.stderr.write(f"changing to d={d}! \n")
+        # d = 2 if colour == "black" else 1
+
+        pieces_remaining = sum(game.board.board_state[colour].values()) + sum(game.board.board_state[colour].values())
+        d = 2
+        if colour == "black":
+            if pieces_remaining <= 20:
+                d = 4
+                sys.stderr.write(f"changing to d={d}! \n")
+            d = 4
+        elif colour == "white":
+            if pieces_remaining <= 8:
+                d = 4
+                sys.stderr.write(f"changing to d={d}! \n")
+            elif pieces_remaining <= 16:
+                d = 3
+                sys.stderr.write(f"changing to d={d}! \n")
+            elif pieces_remaining <= 20:
+                d = 3
+                sys.stderr.write(f"changing to d={d}! \n")
+            
+            
 
         def max_value(game, alpha, beta, depth):
             if cutoff_test(game, depth):
@@ -193,13 +218,24 @@ class AIPlayer(AbstractPlayer):
         
         result = game.game_has_ended(colour)
         if result == GAME_HAS_NOT_ENDED:
+            # from white's perspective
             utility_value = self.evaluation_function(game)
+            # if game.n_turns % 2 == 0 and colour == "white":
+            #     utility_value -= 0.001 * game.heuristic_simple(game.board.board_state, 0)
+            
         elif result == PLAYER_WINS:
-            utility_value = 12
+            utility_value = 1000 # np.inf
         elif result == OPPONENT_WINS:
-            utility_value = -12
+            utility_value = -1000 # -np.inf
         elif result == DRAW:
             utility_value = 0
+            # # Introduce 'contempt' to avoid draw states
+            # # from white's perspective
+            # if game.n_turns % 2 == 0:
+            #     utility_value = -12
+            # # from black's perspective
+            # else:
+            #     utility_value = 12
         
         return utility_value
 
@@ -212,17 +248,9 @@ class AIPlayer(AbstractPlayer):
         opponent_colour = self.opponent_colour
         num_player_tokens = sum(game.board.board_state[colour].values())
         num_opponent_tokens = sum(game.board.board_state[opponent_colour].values())
-        return num_player_tokens - num_opponent_tokens
-
-
-class ManualPlayer(AbstractPlayer):
-    def __init__(self, colour):
-        super().__init__(colour)
-
-    # @override
-    def action(self):
-        action = self.game.get_next_action(self.colour)
-        return action
+        remaining_tokens = num_player_tokens + num_opponent_tokens
+        evaluation = (num_player_tokens - num_opponent_tokens) * (25 - remaining_tokens)
+        return evaluation
 
 
 class AIPlayerU2(AIPlayer):
@@ -280,8 +308,8 @@ class AIPlayerRandom(AIPlayer):
 
 
 class AIPlayerGreedyBoom(AIPlayer):
-    def __init__(self, colour):
-        super().__init__(colour)
+    def __init__(self, colour, depth=1):
+        super().__init__(colour, depth=depth)
 
     # @override
     def alpha_beta_cutoff(self, game, d=2, cutoff_test=None, evaluation_function=None):
@@ -364,4 +392,184 @@ class AIPlayerGreedyBoom(AIPlayer):
                 best_action = action
         return best_action
 
+# TODO: Complete this
+class AIPlayerOpeningMoves(AIPlayer):
+    def __init__(self, colour, depth=2):
+        super().__init__(colour, depth=depth)
+        if colour == "white":
+            opening_actions = (
+                ("MOVE", 1, (3, 0), (3, 1)),
+                ("MOVE", 2, (3, 1), (3, 3)),
+                ("MOVE", 2, (3, 3), (3, 5)),
+                ("MOVE", 1, (3, 5), (1, 5)),
+                # ("BOOM", (1, 5))
+            )
+        else:
+            opening_actions = (
+                ("MOVE", 1, (4, 7), (4, 6)),
+                ("MOVE", 2, (4, 6), (4, 4)),
+                ("MOVE", 2, (4, 4), (4, 2)),
+                ("MOVE", 1, (4, 2), (6, 2)),
+                # ("BOOM", (1, 5))
+            )
+        self.action_generator = (action for action in opening_actions)
 
+    # @override
+    def action(self):
+        try:
+            next_action = next(self.action_generator)
+            if next_action[0] == "MOVE":
+                n_tokens = next_action[1]
+                x_from, y_from = next_action[2][0], next_action[2][1]
+                x_to, y_to = next_action[3][0], next_action[3][1]
+                if not self.game.is_legal_move(self.colour, n_tokens, x_from, y_from, x_to, y_to, False):
+                    return super().action()
+            elif next_action[0] == "BOOM":
+                if not self.game.is_legal_boom(self.colour, next_action[1]):
+                    return super().action()
+            else:
+                ValueError(f"Something went wrong... next_action[0]: {next_action[0]}")
+            return next_action
+        except StopIteration:
+            return super().action()
+
+# TODO: Complete this
+class AIPlayerDistHeuristic(AIPlayer):
+    def __init__(self, colour, depth=2):
+        super().__init__(colour, depth=depth)
+
+    # @override
+    def evaluation_function(self, game):
+        def dist_between_centroids(game):
+            # white centroid
+            x_c_wh, y_c_wh, n_tokens_wh = 0, 0, 0
+            for coords, n_tokens in game.board.board_state["white"].items():
+                x_c_wh += coords[0] * n_tokens
+                y_c_wh += coords[1] * n_tokens
+                n_tokens_wh += n_tokens
+            x_c_wh /= n_tokens_wh
+            y_c_wh /= n_tokens_wh
+
+            # black centroid
+            x_c_bl, y_c_bl, n_tokens_bl = 0, 0, 0
+            for coords, n_tokens in game.board.board_state["black"].items():
+                x_c_bl += coords[0] * n_tokens
+                y_c_bl += coords[1] * n_tokens
+                n_tokens_bl += n_tokens
+            x_c_bl /= n_tokens_bl
+            y_c_bl /= n_tokens_bl
+            
+            # calc distance
+            dist = abs(x_c_bl - x_c_wh) + abs(y_c_bl - y_c_wh)
+            return dist
+
+        standard_eval = super().evaluation_function(game)
+        # if white is Max
+        if self.colour == "white":
+            # and white has just made an action in search tree
+            if game.n_turns % 2 == 1:
+                weight = 0.01
+                # standard_eval += 1
+            else:
+                weight = -0.01
+                # standard_eval -= 1
+        # if black is Max
+        elif self.colour == "black":
+            # and black has just made an action in search tree
+            if game.n_turns % 2 == 0:
+                weight = 0.01
+                # standard_eval += 1
+            else:
+                weight = -0.01
+                # standard_eval -= 1
+        eval_with_dist = standard_eval - weight * dist_between_centroids(game)
+        return eval_with_dist
+
+class AIPlayerDistAndOpeningMoves(AIPlayer):
+    def __init__(self, colour, depth=2):
+        super().__init__(colour, depth=depth)
+        if colour == "white":
+            opening_actions = (
+                ("MOVE", 1, (3, 0), (3, 1)),
+                ("MOVE", 2, (3, 1), (3, 3)),
+                ("MOVE", 2, (3, 3), (3, 5)),
+                ("MOVE", 1, (3, 5), (1, 5)),
+                # ("BOOM", (1, 5))
+            )
+        else:
+            opening_actions = (
+                ("MOVE", 1, (4, 7), (4, 6)),
+                ("MOVE", 2, (4, 6), (4, 4)),
+                ("MOVE", 2, (4, 4), (4, 2)),
+                ("MOVE", 1, (4, 2), (6, 2)),
+                # ("BOOM", (1, 5))
+            )
+        self.action_generator = (action for action in opening_actions)
+
+    # @override
+    def action(self):
+        try:
+            next_action = next(self.action_generator)
+            if next_action[0] == "MOVE":
+                n_tokens = next_action[1]
+                x_from, y_from = next_action[2][0], next_action[2][1]
+                x_to, y_to = next_action[3][0], next_action[3][1]
+                if not self.game.is_legal_move(self.colour, n_tokens, x_from, y_from, x_to, y_to, False):
+                    return super().action()
+            elif next_action[0] == "BOOM":
+                if not self.game.is_legal_boom(self.colour, next_action[1]):
+                    return super().action()
+            else:
+                ValueError(f"Something went wrong... next_action[0]: {next_action[0]}")
+            return next_action
+        except StopIteration:
+            return super().action()
+
+        # @override
+    def evaluation_function(self, game):
+        def dist_between_centroids(game):
+            # white centroid
+            x_c_wh, y_c_wh, n_tokens_wh = 0, 0, 0
+            for coords, n_tokens in game.board.board_state["white"].items():
+                x_c_wh += coords[0] * n_tokens
+                y_c_wh += coords[1] * n_tokens
+                n_tokens_wh += n_tokens
+            x_c_wh /= n_tokens_wh
+            y_c_wh /= n_tokens_wh
+
+            # black centroid
+            x_c_bl, y_c_bl, n_tokens_bl = 0, 0, 0
+            for coords, n_tokens in game.board.board_state["black"].items():
+                x_c_bl += coords[0] * n_tokens
+                y_c_bl += coords[1] * n_tokens
+                n_tokens_bl += n_tokens
+            x_c_bl /= n_tokens_bl
+            y_c_bl /= n_tokens_bl
+            
+            # calc distance
+            dist = abs(x_c_bl - x_c_wh) + abs(y_c_bl - y_c_wh)
+            return dist
+
+        standard_eval = super().evaluation_function(game)
+        # if white is Max
+        if self.colour == "white":
+            # and white has just made an action in search tree
+            weight = 0.01
+            # if game.n_turns % 2 == 1:
+            #     weight = 0.01
+            #     # standard_eval += 1
+            # else:
+            #     weight = -0.01
+            #     # standard_eval -= 1
+        # if black is Max
+        elif self.colour == "black":
+            # and black has just made an action in search tree
+            weight = 0.01
+            # if game.n_turns % 2 == 0:
+            #     weight = 0.01
+            #     # standard_eval += 1
+            # else:
+            #     weight = -0.01
+            #     # standard_eval -= 1
+        eval_with_dist = standard_eval - weight * dist_between_centroids(game)
+        return eval_with_dist

@@ -446,12 +446,12 @@ class Game:
             return OPPONENT_WINS
 
         if self.n_turns == MAX_ALLOWED_TURNS:
-            sys.stderr.write("Draw: maximum number of turns/player (250) reached \n")
+            # sys.stderr.write("Draw: maximum number of turns/player (250) reached \n")
             return DRAW
 
         max_repeated_states = max(self.states_seen.values())
         if max_repeated_states == MAX_ALLOWED_REPEATED_STATES:
-            sys.stderr.write("Draw: maximum number of repeated board configurations (4) reached \n")
+            # sys.stderr.write("Draw: maximum number of repeated board configurations (4) reached \n")
             return DRAW
 
         return GAME_HAS_NOT_ENDED
