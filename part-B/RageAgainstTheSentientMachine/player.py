@@ -119,30 +119,16 @@ class AIPlayer(AbstractPlayer):
         colour = self.colour
         opponent_colour = self.opponent_colour
 
-
-
-        ## playing around with cutoff depths...
-        # d = 2 if colour == "black" else 1
-
-        pieces_remaining = sum(game.board.board_state[colour].values()) + sum(game.board.board_state[colour].values())
-        d = 2
-        if colour == "black":
-            if pieces_remaining <= 20:
-                d = 4
-                sys.stderr.write(f"changing to d={d}! \n")
+        pieces_remaining = sum(game.board.board_state[colour].values()) + sum(game.board.board_state[opponent_colour].values())
+        
+        # variable depth
+        if pieces_remaining <= 5:
             d = 4
-        elif colour == "white":
-            if pieces_remaining <= 8:
-                d = 4
-                sys.stderr.write(f"changing to d={d}! \n")
-            elif pieces_remaining <= 16:
-                d = 3
-                sys.stderr.write(f"changing to d={d}! \n")
-            elif pieces_remaining <= 20:
-                d = 3
-                sys.stderr.write(f"changing to d={d}! \n")
-            
-            
+            # sys.stderr.write(f"changing to d={d}! \n")
+        elif pieces_remaining <= 16:
+            d = 3
+            # sys.stderr.write(f"changing to d={d}! \n")
+                        
 
         def max_value(game, alpha, beta, depth):
             if cutoff_test(game, depth):
@@ -464,24 +450,7 @@ class AIPlayerDistHeuristic(AIPlayer):
             return dist
 
         standard_eval = super().evaluation_function(game)
-        # if white is Max
-        if self.colour == "white":
-            # and white has just made an action in search tree
-            if game.n_turns % 2 == 1:
-                weight = 0.01
-                # standard_eval += 1
-            else:
-                weight = -0.01
-                # standard_eval -= 1
-        # if black is Max
-        elif self.colour == "black":
-            # and black has just made an action in search tree
-            if game.n_turns % 2 == 0:
-                weight = 0.01
-                # standard_eval += 1
-            else:
-                weight = -0.01
-                # standard_eval -= 1
+        weight = 0.01
         eval_with_dist = standard_eval - weight * dist_between_centroids(game)
         return eval_with_dist
 
@@ -494,7 +463,6 @@ class AIPlayerDistAndOpeningMoves(AIPlayer):
                 ("MOVE", 2, (3, 1), (3, 3)),
                 ("MOVE", 2, (3, 3), (3, 5)),
                 ("MOVE", 1, (3, 5), (1, 5)),
-                # ("BOOM", (1, 5))
             )
         else:
             opening_actions = (
@@ -502,7 +470,6 @@ class AIPlayerDistAndOpeningMoves(AIPlayer):
                 ("MOVE", 2, (4, 6), (4, 4)),
                 ("MOVE", 2, (4, 4), (4, 2)),
                 ("MOVE", 1, (4, 2), (6, 2)),
-                # ("BOOM", (1, 5))
             )
         self.action_generator = (action for action in opening_actions)
 
@@ -525,7 +492,7 @@ class AIPlayerDistAndOpeningMoves(AIPlayer):
         except StopIteration:
             return super().action()
 
-        # @override
+    # @override
     def evaluation_function(self, game):
         def dist_between_centroids(game):
             # white centroid
@@ -551,25 +518,6 @@ class AIPlayerDistAndOpeningMoves(AIPlayer):
             return dist
 
         standard_eval = super().evaluation_function(game)
-        # if white is Max
-        if self.colour == "white":
-            # and white has just made an action in search tree
-            weight = 0.01
-            # if game.n_turns % 2 == 1:
-            #     weight = 0.01
-            #     # standard_eval += 1
-            # else:
-            #     weight = -0.01
-            #     # standard_eval -= 1
-        # if black is Max
-        elif self.colour == "black":
-            # and black has just made an action in search tree
-            weight = 0.01
-            # if game.n_turns % 2 == 0:
-            #     weight = 0.01
-            #     # standard_eval += 1
-            # else:
-            #     weight = -0.01
-            #     # standard_eval -= 1
-        eval_with_dist = standard_eval - weight * dist_between_centroids(game)
+        weight_dist = 0.01
+        eval_with_dist = standard_eval - weight_dist * dist_between_centroids(game)
         return eval_with_dist
